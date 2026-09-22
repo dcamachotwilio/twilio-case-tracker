@@ -6,11 +6,10 @@
 <title>Twilio Case Reference Workflows</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SheetJS para Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<!-- Google API client -->
-<script src="https://apis.google.com/js/api.js" async defer></script>
+<!-- Supabase SDK v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     /* Twilio Brand Colors */
@@ -47,7 +46,6 @@
   h1,h2,h3,.brand-font{font-family:'Sora',system-ui,sans-serif;}
   .mono{font-family:'JetBrains Mono',monospace;}
 
-  /* ---------- Ambient background adapted for Twilio ---------- */
   #emberLayer{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
   .ember{
     position:absolute; bottom:-10px; border-radius:50%;
@@ -57,13 +55,21 @@
     animation-timing-function: linear, ease-in-out;
     animation-iteration-count: infinite, infinite;
   }
-  @keyframes rise{
-    0%{ transform: translateY(0) translateX(0); opacity:0.6;}
-    100%{ transform: translateY(-115vh) translateX(var(--drift,20px)); opacity:0;}
-  }
+  @keyframes rise{ 0%{ transform: translateY(0) translateX(0); opacity:0.6;} 100%{ transform: translateY(-115vh) translateX(var(--drift,20px)); opacity:0;} }
   @keyframes flicker{0%,100%{ opacity:0.6;} 50%{opacity:0.2;}}
   
-  .page{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 18px 70px;}
+  .page{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 18px 70px; display:none;} /* Oculto hasta login */
+
+  /* ---------- Login Overlay ---------- */
+  #loginOverlay {
+    position: fixed; inset: 0; background: var(--ocean-deep); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-card {
+    background: var(--ocean-mid); border: 1px solid var(--card-border); border-radius: 12px;
+    padding: 40px; width: 100%; max-width: 400px; text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
 
   /* ---------- Header ---------- */
   header{text-align:center; padding:8px 0 26px; border-bottom:1px solid var(--card-border); margin-bottom:26px;}
@@ -71,11 +77,9 @@
   .credit span{color:var(--twilio-red); font-weight:600;}
   .logo-row{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:6px;}
   .logo-mark{
-    width:34px; height:34px; border-radius:8px;
-    background: var(--twilio-red); 
+    width:34px; height:34px; border-radius:8px; background: var(--twilio-red); 
     display: flex; align-items: center; justify-content: center;
-    color: white; font-weight: 800; font-family: 'Sora', sans-serif; font-size: 20px;
-    flex-shrink:0;
+    color: white; font-weight: 800; font-family: 'Sora', sans-serif; font-size: 20px; flex-shrink:0;
   }
   h1.title{font-size:clamp(24px,4vw,36px); margin:0; font-weight:800; letter-spacing:-0.5px;}
   h1.title .accent{color:var(--twilio-red);}
@@ -93,25 +97,13 @@
   }
   .search-box input::placeholder{color:var(--text-dim);}
   .search-btn{
-    background:var(--twilio-red);
-    border:none; color:#fff; width:38px; height:38px; border-radius:50%; cursor:pointer;
+    background:var(--twilio-red); border:none; color:#fff; width:38px; height:38px; border-radius:50%; cursor:pointer;
     display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .15s ease;
   }
   .search-btn:hover{transform:scale(1.06); background:var(--twilio-red-hover);}
   
-  .global-actions {
-    display: flex; justify-content: center; gap: 12px; margin-top: 20px;
-  }
-
-  /* ---------- Google Drive connection status ---------- */
-  .drive-row{
-    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
-    margin-top:16px; font-size:12.5px;
-  }
-  .drive-dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); display:inline-block; margin-right:6px; flex-shrink:0;}
-  .drive-dot.connected{background:var(--ok); box-shadow:0 0 6px var(--ok);}
-  .drive-status-text{color:var(--text-dim); display:flex; align-items:center;}
-  .btn-sm{padding:6px 12px; font-size:12px;}
+  .global-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+  .user-info-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; font-size: 12.5px; color: var(--text-dim); }
 
   /* ---------- Sections ---------- */
   section.block{margin-top:44px;}
@@ -138,12 +130,9 @@
   .btn-success{background:var(--ok); color:#fff;}
   .btn-success:hover:not(:disabled){filter:brightness(1.1);}
   .btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .btn-sm{padding:6px 12px; font-size:12px;}
 
-  /* Dropdown Filter de Estados */
-  #ticketFilter {
-    background: var(--card-bg); color: var(--text-light); border: 1px solid var(--card-border);
-    border-radius: 6px; padding: 4px 10px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; cursor: pointer;
-  }
+  #ticketFilter { background: var(--card-bg); color: var(--text-light); border: 1px solid var(--card-border); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; cursor: pointer; }
   #ticketFilter option { background: var(--ocean-deep); }
 
   /* ---------- Ticket grid ---------- */
@@ -162,10 +151,7 @@
   .ticket-card.selected .select-dot{background:var(--twilio-red); border-color:var(--twilio-red);}
   .ticket-num{font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:#fff; margin-right:6px;}
 
-  .status-badge{
-    display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;
-    padding:3px 8px; border-radius:999px; margin-left:4px; vertical-align:middle;
-  }
+  .status-badge{ display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; padding:3px 8px; border-radius:999px; margin-left:4px; vertical-align:middle; }
   .status-on-hold{background:rgba(2,99,224,0.18); color:var(--onhold);}
   .status-pending{background:rgba(242,47,70,0.18); color:var(--pending);}
   .status-solved{background:rgba(20,176,83,0.18); color:var(--ok);}
@@ -174,41 +160,21 @@
 
   .ticket-desc{font-size:13px; color:var(--text-dim); margin-top:10px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
   .empty-state{color:var(--text-dim); font-size:13px; padding:20px; text-align:center; border:1px dashed var(--card-border); border-radius:var(--radius); width:100%; grid-column:1 / -1;}
-
   .ticket-timers{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim); margin-top:10px; margin-bottom:8px; border-bottom:1px solid var(--card-border); padding-bottom:6px;}
   .ticket-timers span{color:var(--text-light);}
 
-  .follow-up-btn{
-    position:absolute; bottom:12px; left:16px;
-    background:rgba(255,255,255,0.1); color:#fff; border:1px solid var(--card-border); border-radius:4px;
-    padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer;
-    transition:background 0.2s, transform 0.1s; z-index:2;
-  }
+  .follow-up-btn{ position:absolute; bottom:12px; left:16px; background:rgba(255,255,255,0.1); color:#fff; border:1px solid var(--card-border); border-radius:4px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; transition:background 0.2s, transform 0.1s; z-index:2; }
   .follow-up-btn:hover{background:var(--text-light); color:var(--twilio-navy);}
   .follow-up-btn:active{transform:scale(0.95);}
 
-  .update-notice{
-    position:absolute; bottom:12px; left:100px;
-    background:var(--ok); color:#fff; font-size:10px; font-weight:bold;
-    padding:4px 8px; border-radius:4px; opacity:0; pointer-events:none;
-    transition:opacity 0.3s; z-index:2;
-  }
-
-  .alert-siren{
-    color:var(--danger); background:rgba(242,47,70,0.15);
-    padding:6px 10px; border-radius:4px; font-size:11px; font-weight:700;
-    margin-top:8px; margin-bottom:8px; border:1px solid rgba(242,47,70,0.4);
-    animation:pulseAlert 1.5s infinite; display:inline-block;
-  }
+  .update-notice{ position:absolute; bottom:12px; left:100px; background:var(--ok); color:#fff; font-size:10px; font-weight:bold; padding:4px 8px; border-radius:4px; opacity:0; pointer-events:none; transition:opacity 0.3s; z-index:2; }
+  .alert-siren{ color:var(--danger); background:rgba(242,47,70,0.15); padding:6px 10px; border-radius:4px; font-size:11px; font-weight:700; margin-top:8px; margin-bottom:8px; border:1px solid rgba(242,47,70,0.4); animation:pulseAlert 1.5s infinite; display:inline-block; }
   @keyframes pulseAlert{ 0%{ box-shadow:0 0 0 rgba(242,47,70,0.4); } 50%{ box-shadow:0 0 8px rgba(242,47,70,0.8); } 100%{ box-shadow:0 0 0 rgba(242,47,70,0.4); } }
 
   /* ---------- Tables ---------- */
   .table-wrap{overflow-x:auto; border:1px solid var(--card-border); border-radius:var(--radius); -webkit-overflow-scrolling:touch; background:var(--card-bg);}
   table.esc-table{width:100%; border-collapse:collapse; min-width:640px;}
-  table.esc-table thead th{
-    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim);
-    padding:12px 16px; background:rgba(255,255,255,0.02); border-bottom:1px solid var(--card-border);
-  }
+  table.esc-table thead th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim); padding:12px 16px; background:rgba(255,255,255,0.02); border-bottom:1px solid var(--card-border); }
   table.esc-table tbody td{padding:13px 16px; font-size:13px; border-bottom:1px solid var(--card-border); vertical-align:top;}
   table.esc-table tbody tr{cursor:pointer; transition:background .15s ease;}
   table.esc-table tbody tr:hover{background:var(--card-bg-hover);}
@@ -216,31 +182,19 @@
   table.esc-table tbody tr:last-child td{border-bottom:none;}
 
   /* ---------- Modal ---------- */
-  .modal-overlay{
-    position:fixed; inset:0; background:rgba(6,3,58,0.85); backdrop-filter:blur(5px);
-    display:none; align-items:center; justify-content:center; z-index:100; padding:16px;
-  }
+  .modal-overlay{ position:fixed; inset:0; background:rgba(6,3,58,0.85); backdrop-filter:blur(5px); display:none; align-items:center; justify-content:center; z-index:100; padding:16px; }
   .modal-overlay.show{display:flex;}
-  .modal{
-    background:var(--ocean-mid); border:1px solid var(--card-border); border-radius:12px; width:100%; max-width:560px;
-    max-height:88vh; overflow-y:auto; padding:26px; box-shadow:0 20px 60px rgba(0,0,0,0.5);
-  }
+  .modal{ background:var(--ocean-mid); border:1px solid var(--card-border); border-radius:12px; width:100%; max-width:560px; max-height:88vh; overflow-y:auto; padding:26px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
   .modal h3{margin:0 0 18px; font-size:18px; display:flex; align-items:center; gap:8px;}
   .field{margin-bottom:16px;}
   .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;}
-  .field input, .field textarea{
-    width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:6px;
-    padding:10px 12px; color:var(--text-light); font-size:14px; font-family:'Inter',sans-serif; resize:vertical;
-  }
+  .field input, .field textarea{ width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:6px; padding:10px 12px; color:var(--text-light); font-size:14px; font-family:'Inter',sans-serif; resize:vertical; }
   .field input:focus, .field textarea:focus{outline:none; border-color:var(--twilio-red); background:rgba(255,255,255,0.08);}
   .field textarea{min-height:70px;}
   .field input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1); cursor:pointer;}
   
   .status-toggle{display:flex; gap:6px; flex-wrap:wrap;}
-  .status-option{
-    flex:1; min-width:80px; text-align:center; padding:10px 4px; border-radius:6px; border:1px solid var(--card-border);
-    cursor:pointer; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim);
-  }
+  .status-option{ flex:1; min-width:80px; text-align:center; padding:10px 4px; border-radius:6px; border:1px solid var(--card-border); cursor:pointer; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim); }
   .status-option.active-on-hold{background:rgba(2,99,224,0.2); color:var(--onhold); border-color:var(--onhold);}
   .status-option.active-pending{background:rgba(242,47,70,0.2); color:var(--pending); border-color:var(--pending);}
   .status-option.active-solved{background:rgba(20,176,83,0.2); color:var(--ok); border-color:var(--ok);}
@@ -251,9 +205,7 @@
   .detail-view p{font-size:13px; line-height:1.6; color:var(--text-light); background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);}
   .detail-label{font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim); margin:16px 0 6px; font-weight:600;}
   .detail-label:first-child{margin-top:0;}
-
   footer.page-footer{text-align:center; margin-top:56px; font-size:11px; color:var(--text-dim);}
-  
   input[type="file"] { display: none; }
 </style>
 </head>
@@ -261,36 +213,48 @@
 
 <div id="emberLayer"></div>
 
-<div class="page">
+<!-- PANTALLA DE LOGIN -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="logo-mark" style="margin: 0 auto 20px;">T</div>
+    <h3 style="margin-top: 0;">Iniciar Sesión</h3>
+    <div class="field" style="text-align: left;">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="usuario@twilio.com">
+    </div>
+    <div class="field" style="text-align: left;">
+      <label>Contraseña</label>
+      <input type="password" id="loginPassword" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" style="width: 100%; margin-top: 10px;">Entrar a la Plataforma</button>
+    <p id="loginError" style="color: var(--danger); font-size: 12px; margin-top: 15px; display: none;"></p>
+  </div>
+</div>
+
+<div class="page" id="mainPage">
   <header>
     <div class="credit">Workspace built by <span>Diego Camacho</span></div>
     <div class="logo-row"><div class="logo-mark">T</div></div>
     <h1 class="title">Twilio Case <span class="accent">Workflows</span></h1>
-    <p class="subtitle">A living reference of ticket resolutions, escalation paths, and support scopes — logged case by case for faster troubleshooting.</p>
+    <p class="subtitle">A living reference of ticket resolutions, escalation paths, and support scopes — powered by Supabase.</p>
 
     <div class="search-wrap">
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="Search tickets, scopes or descriptions...">
-        <button class="search-btn" id="searchBtn" title="Search" aria-label="Search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
+        <button class="search-btn" id="searchBtn" title="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></button>
       </div>
     </div>
     
     <div class="global-actions">
        <button class="btn btn-ghost" id="exportAllBtn" style="border-color: var(--ok); color: var(--ok);">Export All Data (Excel)</button>
-       <button class="btn btn-ghost" id="importBtn" style="border-color: var(--cisco-blue); color: var(--cisco-blue);">Import Data</button>
+       <button class="btn btn-ghost" id="importBtn" style="border-color: var(--cisco-blue); color: var(--cisco-blue);">Import Data (Cloud Sync)</button>
        <input type="file" id="importFile" accept=".xlsx, .xls">
     </div>
 
-    <div class="drive-row">
-      <span class="drive-status-text" id="driveStatusText"><span class="drive-dot" id="driveDot"></span>Not connected to Google Drive</span>
-      <button class="btn btn-secondary btn-sm" id="connectDriveBtn">Connect Google Drive</button>
-      <button class="btn btn-ghost btn-sm" id="chooseFileBtn" style="display:none;">Choose Shared File</button>
-      <button class="btn btn-ghost btn-sm" id="disconnectDriveBtn" style="display:none;">Disconnect</button>
-    </div>
-    <div class="drive-row" style="margin-top:6px;">
-      <button class="btn btn-ghost btn-sm" id="createSharedFileBtn" style="display:none;" title="Run this once, only as the owner, before sharing the file with your team">First-time setup: Create Shared File (owner only)</button>
+    <div class="user-info-row">
+      <div class="drive-dot connected"></div>
+      Conectado como: <strong id="userEmailDisplay"></strong>
+      <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin-left: 10px;">Cerrar Sesión</button>
     </div>
   </header>
 
@@ -357,7 +321,7 @@
     </div>
   </section>
 
-  <footer class="page-footer">Twilio Case Reference Workflows &middot; Information syncs automatically securely.</footer>
+  <footer class="page-footer">Twilio Case Reference Workflows &middot; Synchronized securely with Supabase PostgreSQL.</footer>
 </div>
 
 <!-- ============ MODALS ============ -->
@@ -383,7 +347,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelAddTicket">Cancelar</button>
-      <button class="btn btn-primary" id="saveTicketBtn">Guardar</button>
+      <button class="btn btn-primary" id="saveTicketBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -443,7 +407,7 @@
     <div class="field"><label>Descripción del Wiki / Path</label><textarea id="scWikiDesc"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelScopeModal">Cancelar</button>
-      <button class="btn btn-primary" id="saveScopeBtn">Guardar</button>
+      <button class="btn btn-primary" id="saveScopeBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -458,7 +422,7 @@
     <div class="field"><label>Macro to be Used</label><textarea id="escMacro"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelEscModal">Cancelar</button>
-      <button class="btn btn-primary" id="saveEscBtn">Guardar</button>
+      <button class="btn btn-primary" id="saveEscBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -467,19 +431,19 @@
 (function(){
   "use strict";
 
+  // ==========================================
+  // CONFIGURACIÓN DE SUPABASE (DB & AUTH)
+  // ==========================================
+  const SUPABASE_URL = 'https://korhfygkdkvswfmmzknhw.supabase.co'; 
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvcmhmeWdrZGt2c3dmbXprbmh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDQzODIsImV4cCI6MjEwNTY4MDM4Mn0.tmVCS9P5TBDdW7VDvBV3SFaEtPOR4_OfGHju-anGVw4';
+  
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ESTADO LOCAL (Se actualiza con la DB)
   var state = { tickets: [], escalations: [], scopes: [], selectedTicketId: null, selectedEscId: null, selectedScopeId: null };
   var editingTicketId = null, editingEscId = null, editingScopeId = null;
 
-  // GOOGLE DRIVE CONFIG
-  var GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
-  var GOOGLE_API_KEY = 'YOUR_API_KEY_HERE';
-  var DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'; 
-  var DRIVE_FILE_NAME = 'case-reference-workflows-data.json';
-  var LS_DRIVE_FILE_ID_KEY = 'crw_drive_file_id';
-  var pickerApiLoaded = false; 
-
-  var tokenClient = null, driveAccessToken = null, driveFileId = null, driveConnected = false;
-
+  // --- AMBIENT BACKGROUND ---
   function buildEmbers(){
     var layer = document.getElementById('emberLayer');
     var count = window.innerWidth < 600 ? 12 : 22;
@@ -487,149 +451,13 @@
       var e = document.createElement('div');
       e.className = 'ember';
       var size = 3 + Math.random()*6; e.style.width = size+'px'; e.style.height = size+'px';
-      e.style.left = (Math.random()*100)+'vw';
-      e.style.setProperty('--drift', (Math.random()*60-30)+'px');
+      e.style.left = (Math.random()*100)+'vw'; e.style.setProperty('--drift', (Math.random()*60-30)+'px');
       e.style.animationDuration = (7 + Math.random()*9)+'s, '+(1 + Math.random()*2)+'s';
-      e.style.animationDelay = (Math.random()*12)+'s, 0s';
-      layer.appendChild(e);
+      e.style.animationDelay = (Math.random()*12)+'s, 0s'; layer.appendChild(e);
     }
   }
 
-  function uid(){ return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
-
-  var LS_TICKETS_KEY = 'crw_tickets';
-  var LS_ESCALATIONS_KEY = 'crw_escalations';
-  var LS_SCOPES_KEY = 'crw_scopes';
-
-  function loadData(){
-    var rawTickets = localStorage.getItem(LS_TICKETS_KEY);
-    var rawEscalations = localStorage.getItem(LS_ESCALATIONS_KEY);
-    var rawScopes = localStorage.getItem(LS_SCOPES_KEY);
-
-    try{ state.tickets = rawTickets ? JSON.parse(rawTickets) : []; }catch(e){ state.tickets = []; }
-    var now = Date.now();
-    state.tickets.forEach(function(t){
-      if (!t.createdAt) t.createdAt = now;
-      if (!t.updatedAt) t.updatedAt = now;
-      if (!t.statusUpdatedAt) t.statusUpdatedAt = now;
-      if (t.status === 'OPEN') t.status = 'PENDING';
-    });
-    try{ state.escalations = rawEscalations ? JSON.parse(rawEscalations) : []; }catch(e){ state.escalations = []; }
-    try{ state.scopes = rawScopes ? JSON.parse(rawScopes) : []; }catch(e){ state.scopes = []; }
-
-    renderTickets();
-    renderEscalations();
-    renderScopes();
-  }
-
-  function saveTickets(){ try{ localStorage.setItem(LS_TICKETS_KEY, JSON.stringify(state.tickets)); }catch(err){} saveToDrive(); }
-  function saveEscalations(){ try{ localStorage.setItem(LS_ESCALATIONS_KEY, JSON.stringify(state.escalations)); }catch(err){} saveToDrive(); }
-  function saveScopes(){ try{ localStorage.setItem(LS_SCOPES_KEY, JSON.stringify(state.scopes)); }catch(err){} saveToDrive(); }
-  function saveAllToLocalStorage(){
-    try {
-      localStorage.setItem(LS_TICKETS_KEY, JSON.stringify(state.tickets));
-      localStorage.setItem(LS_ESCALATIONS_KEY, JSON.stringify(state.escalations));
-      localStorage.setItem(LS_SCOPES_KEY, JSON.stringify(state.scopes));
-    } catch(e){}
-    saveToDrive();
-  }
-
-  // --- DRIVE LOGIC ---
-  function updateDriveStatusUI(){
-    var dot = document.getElementById('driveDot'), text = document.getElementById('driveStatusText'),
-        conn = document.getElementById('connectDriveBtn'), disc = document.getElementById('disconnectDriveBtn'),
-        choose = document.getElementById('chooseFileBtn'), create = document.getElementById('createSharedFileBtn');
-    if (driveConnected){
-      dot.classList.add('connected'); text.innerHTML = ''; text.appendChild(dot); text.appendChild(document.createTextNode('Connected to Google Drive'));
-      conn.style.display = 'none'; disc.style.display = 'inline-block'; choose.style.display = 'inline-block'; create.style.display = 'inline-block';
-    } else {
-      dot.classList.remove('connected'); text.innerHTML = ''; text.appendChild(dot); text.appendChild(document.createTextNode('Not connected to Google Drive'));
-      conn.style.display = 'inline-block'; disc.style.display = 'none'; choose.style.display = 'none'; create.style.display = 'none';
-    }
-  }
-
-  function ensureTokenClient(){
-    if (tokenClient) return true;
-    if (!window.google || !google.accounts || !google.accounts.oauth2) return false; 
-    tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPE, callback: '' });
-    return true;
-  }
-
-  function driveFetch(url, options){
-    options = options || {};
-    options.headers = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + driveAccessToken });
-    return fetch(url, options).then(function(res){
-      if (res.status === 401){ driveConnected = false; driveAccessToken = null; updateDriveStatusUI(); throw new Error('Session expired'); }
-      return res;
-    });
-  }
-
-  function loadPickerApi(){ if (window.gapi && gapi.load) gapi.load('picker', function(){ pickerApiLoaded = true; }); }
-
-  function createSharedDriveFile(){
-    var boundary = '-------crw' + Date.now();
-    var metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
-    var payload = { tickets: state.tickets, escalations: state.escalations, scopes: state.scopes };
-    var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n' +
-               '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + JSON.stringify(payload) + '\r\n--' + boundary + '--';
-    driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body
-    }).then(function(res){ return res.json(); }).then(function(created){
-      driveFileId = created.id; localStorage.setItem(LS_DRIVE_FILE_ID_KEY, driveFileId);
-      alert('Shared file created! ID:\n' + created.id);
-      loadFromDrive();
-    }).catch(function(err){ console.error(err); });
-  }
-
-  function openDriveFilePicker(){
-    if (!pickerApiLoaded) return;
-    var view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(false).setSelectFolderEnabled(false);
-    var picker = new google.picker.PickerBuilder().addView(view).setOAuthToken(driveAccessToken).setDeveloperKey(GOOGLE_API_KEY)
-      .setTitle('Select the shared ' + DRIVE_FILE_NAME + ' file').setCallback(function(data){
-        if (data.action === google.picker.Action.PICKED){ driveFileId = data.docs[0].id; localStorage.setItem(LS_DRIVE_FILE_ID_KEY, driveFileId); loadFromDrive(); }
-      }).build();
-    picker.setVisible(true);
-  }
-
-  function loadFromDrive(){
-    if (!driveFileId) return Promise.resolve();
-    return driveFetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media')
-      .then(function(res){ return res.json(); })
-      .then(function(json){
-        state.tickets = json.tickets || []; state.escalations = json.escalations || []; state.scopes = json.scopes || [];
-        var now = Date.now();
-        state.tickets.forEach(function(t){
-          if (!t.createdAt) t.createdAt = now; if (!t.updatedAt) t.updatedAt = now; if (!t.statusUpdatedAt) t.statusUpdatedAt = now;
-        });
-        renderTickets(); renderEscalations(); renderScopes();
-        saveAllToLocalStorage();
-      }).catch(function(err){ console.error(err); });
-  }
-
-  function saveToDrive(){
-    if (!driveConnected || !driveFileId) return;
-    driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickets: state.tickets, escalations: state.escalations, scopes: state.scopes })
-    }).catch(function(err){ console.error(err); });
-  }
-
-  function connectGoogleDrive(){
-    if (!ensureTokenClient()) return;
-    tokenClient.callback = function(resp){
-      if (resp.error) return;
-      driveAccessToken = resp.access_token; driveConnected = true; updateDriveStatusUI();
-      var cachedFileId = localStorage.getItem(LS_DRIVE_FILE_ID_KEY);
-      if (cachedFileId){ driveFileId = cachedFileId; loadFromDrive(); } else { openDriveFilePicker(); }
-    };
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  }
-  function disconnectGoogleDrive(){
-    if (driveAccessToken && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(driveAccessToken, function(){});
-    driveAccessToken = null; driveConnected = false; driveFileId = null; updateDriveStatusUI();
-  }
-
-  // --- Utils ---
+  // --- UTILIDADES ---
   function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
   function formatTimeDiff(ms){
     if (!ms || ms < 0) return '0d 0h';
@@ -653,6 +481,7 @@
     if (status === 'KICKED') return '<span class="status-badge status-kicked">Kicked</span>';
     return '<span class="status-badge status-pending">Pending</span>';
   }
+  
   function setStatusToggle(container, status){
     var opts = container.querySelectorAll('.status-option');
     opts.forEach(function(o){
@@ -669,27 +498,116 @@
     container.querySelectorAll('.status-option').forEach(function(o){ o.addEventListener('click', function(){ setStatusToggle(container, o.getAttribute('data-status')); }); });
   }
 
-  // --- RENDER TICKETS ---
+  // ==========================================
+  // AUTENTICACIÓN Y SESIÓN (SUPABASE)
+  // ==========================================
+  async function checkSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    handleSession(session);
+  }
+
+  function handleSession(session) {
+    if (session) {
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('mainPage').style.display = 'block';
+      document.getElementById('userEmailDisplay').innerText = session.user.email;
+      loadAllDataFromDB();
+      setupRealtimeSubscriptions();
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+      document.getElementById('mainPage').style.display = 'none';
+    }
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    document.getElementById('loginBtn').innerText = "Verificando...";
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    document.getElementById('loginBtn').innerText = "Entrar a la Plataforma";
+    
+    if (error) {
+      errEl.innerText = "Error: " + error.message;
+      errEl.style.display = 'block';
+    } else {
+      handleSession(data.session);
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  });
+
+  // ==========================================
+  // OPERACIONES BASE DE DATOS (CRUD CLOUD)
+  // ==========================================
+  async function loadAllDataFromDB() {
+    await Promise.all([fetchTickets(), fetchScopes(), fetchEscalations()]);
+  }
+
+  // LECTURA
+  async function fetchTickets() {
+    const { data, error } = await supabase.from('tickets').select('*');
+    if (error) { console.error("Error fetching tickets:", error); return; }
+    
+    // Mapear de SQL a nuestro JS Local
+    state.tickets = data.map(t => ({
+      id: t.id, ticketNumber: t.ticket_number, description: t.description, actions: t.actions, 
+      resolution: t.resolution, status: t.status, createdAt: t.created_at, updatedAt: t.updated_at, statusUpdatedAt: t.status_updated_at
+    }));
+    
+    // Auto-cierre de 10 días para los Tickets en DB
+    var now = Date.now(), tenDaysMs = 10 * 24 * 60 * 60 * 1000, needsUpdate = false;
+    for (let t of state.tickets) {
+      if (t.status === 'SOLVED' && t.statusUpdatedAt && (now - t.statusUpdatedAt) >= tenDaysMs) {
+        t.status = 'CLOSED'; t.statusUpdatedAt = now; t.updatedAt = now;
+        await supabase.from('tickets').update({ status: 'CLOSED', status_updated_at: now, updated_at: now }).eq('id', t.id);
+        needsUpdate = true;
+      }
+    }
+    if(needsUpdate) { /* fetchTickets se llamará solo por el realtime */ } else { renderTickets(); }
+  }
+
+  async function fetchScopes() {
+    const { data, error } = await supabase.from('scopes').select('*');
+    if (error) { console.error("Error fetching scopes:", error); return; }
+    state.scopes = data.map(s => ({ id: s.id, scopeTitle: s.scope_title, scopeDesc: s.scope_desc, wikiTitle: s.wiki_title, wikiDesc: s.wiki_desc }));
+    renderScopes();
+  }
+
+  async function fetchEscalations() {
+    const { data, error } = await supabase.from('escalations').select('*');
+    if (error) { console.error("Error fetching escalations:", error); return; }
+    state.escalations = data;
+    renderEscalations();
+  }
+
+  // SUSCRIPCIONES REALTIME (WEBSOCKETS)
+  function setupRealtimeSubscriptions() {
+    supabase.channel('public-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, payload => { fetchTickets(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scopes' }, payload => { fetchScopes(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'escalations' }, payload => { fetchEscalations(); })
+      .subscribe();
+  }
+
+  // ==========================================
+  // INTERFAZ Y RENDERIZADO
+  // ==========================================
+
+  // --- TICKETS ---
   function renderTickets(){
     var grid = document.getElementById('ticketGrid'), now = Date.now();
-    
     var filterEl = document.getElementById('ticketFilter');
     var currentFilter = filterEl ? filterEl.value : 'ALL';
 
     state.tickets.sort(function(a, b){ return (a.createdAt || 0) - (b.createdAt || 0); });
     
-    // Auto-close: exactly 10 days after a ticket is marked SOLVED, flip to CLOSED
-    var tenDaysMs = 10 * 24 * 60 * 60 * 1000, needsSave = false;
-    state.tickets.forEach(function(t){
-      if (t.status === 'SOLVED' && t.statusUpdatedAt && (now - t.statusUpdatedAt) >= tenDaysMs){
-        t.status = 'CLOSED'; t.statusUpdatedAt = now; t.updatedAt = now; needsSave = true;
-      }
-    });
-    if (needsSave) saveTickets();
-
-    var visibleTickets = state.tickets.filter(function(t){
-      return currentFilter === 'ALL' || t.status === currentFilter;
-    });
+    var visibleTickets = state.tickets.filter(function(t){ return currentFilter === 'ALL' || t.status === currentFilter; });
 
     if (!visibleTickets.length){ grid.innerHTML = '<div class="empty-state">No tickets found for this view.</div>'; document.getElementById('removeTicketBtn').disabled = true; return; }
 
@@ -712,56 +630,20 @@
     });
     grid.querySelectorAll('.ticket-card').forEach(function(card){ card.addEventListener('click', function(){ openTicketDetail(card.getAttribute('data-id')); }); });
     grid.querySelectorAll('.follow-up-btn').forEach(function(btn){
-      btn.addEventListener('click', function(ev){
+      btn.addEventListener('click', async function(ev){
         ev.stopPropagation(); var id = btn.getAttribute('data-id'), t = state.tickets.find(function(x){ return x.id === id;}); if (!t) return;
-        t.updatedAt = Date.now(); t.statusUpdatedAt = Date.now(); saveTickets();
+        
+        // Actualizar en DB
+        await supabase.from('tickets').update({ updated_at: Date.now(), status_updated_at: Date.now() }).eq('id', id);
+        
         var notice = document.getElementById('notice-'+id);
-        if (notice){ notice.style.opacity = '1'; setTimeout(function(){ notice.style.opacity = '0'; renderTickets(); }, 1200); } else renderTickets();
+        if (notice){ notice.style.opacity = '1'; setTimeout(function(){ notice.style.opacity = '0'; }, 1200); }
       });
     });
     document.getElementById('removeTicketBtn').disabled = !state.selectedTicketId;
   }
-  var ticketFilterEl = document.getElementById('ticketFilter');
-  if (ticketFilterEl){ ticketFilterEl.addEventListener('change', renderTickets); }
+  if (document.getElementById('ticketFilter')){ document.getElementById('ticketFilter').addEventListener('change', renderTickets); }
 
-
-  // --- RENDER SCOPES ---
-  function renderScopes(){
-    var body = document.getElementById('scopeTableBody');
-    if (!state.scopes.length){
-      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No scope entries added yet.</td></tr>';
-      document.getElementById('removeScopeBtn').disabled = true; document.getElementById('editScopeBtn').disabled = true; return;
-    }
-    body.innerHTML = state.scopes.map(function(s){
-      var selected = state.selectedScopeId === s.id ? ' selected' : '';
-      return '<tr class="'+selected+'" data-id="'+s.id+'">'+
-        '<td><b>'+escapeHtml(s.scopeTitle)+'</b></td><td>'+escapeHtml(s.scopeDesc)+'</td>'+
-        '<td><b>'+escapeHtml(s.wikiTitle)+'</b></td><td>'+escapeHtml(s.wikiDesc)+'</td></tr>';
-    }).join('');
-    body.querySelectorAll('tr[data-id]').forEach(function(row){
-      row.addEventListener('click', function(){ state.selectedScopeId = (state.selectedScopeId === row.getAttribute('data-id')) ? null : row.getAttribute('data-id'); renderScopes(); });
-    });
-    document.getElementById('removeScopeBtn').disabled = !state.selectedScopeId; document.getElementById('editScopeBtn').disabled = !state.selectedScopeId;
-  }
-
-  // --- RENDER ESCALATIONS ---
-  function renderEscalations(){
-    var body = document.getElementById('escTableBody');
-    if (!state.escalations.length){
-      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No escalation paths added yet.</td></tr>';
-      document.getElementById('removeEscBtn').disabled = true; document.getElementById('editEscBtn').disabled = true; return;
-    }
-    body.innerHTML = state.escalations.map(function(e){
-      var selected = state.selectedEscId === e.id ? ' selected' : '';
-      return '<tr class="'+selected+'" data-id="'+e.id+'"><td>'+escapeHtml(e.description)+'</td><td>'+escapeHtml(e.team)+'</td><td>'+escapeHtml(e.path)+'</td><td>'+escapeHtml(e.macro)+'</td></tr>';
-    }).join('');
-    body.querySelectorAll('tr[data-id]').forEach(function(row){
-      row.addEventListener('click', function(){ state.selectedEscId = (state.selectedEscId === row.getAttribute('data-id')) ? null : row.getAttribute('data-id'); renderEscalations(); });
-    });
-    document.getElementById('removeEscBtn').disabled = !state.selectedEscId; document.getElementById('editEscBtn').disabled = !state.selectedEscId;
-  }
-
-  // --- TICKETS LOGIC ---
   var addTicketModal = document.getElementById('addTicketModal');
   wireStatusToggle(document.getElementById('atStatusToggle'));
   document.getElementById('openAddTicketBtn').addEventListener('click', function(){
@@ -770,16 +652,32 @@
     setStatusToggle(document.getElementById('atStatusToggle'), 'PENDING'); addTicketModal.classList.add('show');
   });
   document.getElementById('cancelAddTicket').addEventListener('click', function(){ addTicketModal.classList.remove('show'); });
-  document.getElementById('saveTicketBtn').addEventListener('click', function(){
+  
+  // Guardar Nuevo Ticket en Supabase
+  document.getElementById('saveTicketBtn').addEventListener('click', async function(){
     var num = document.getElementById('atNumber').value.trim(), desc = document.getElementById('atDescription').value.trim();
     if (!num || !desc){ alert('Please provide at least a ticket number and a problem description.'); return; }
+    
     var now = Date.now(), enteredAt = dateInputValueToTimestamp(document.getElementById('atTicketDate').value);
-    state.tickets.push({ id: uid(), ticketNumber: num, description: desc, actions: document.getElementById('atActions').value.trim(), resolution: document.getElementById('atResolution').value.trim(), status: getStatusToggle(document.getElementById('atStatusToggle')), createdAt: enteredAt, updatedAt: now, statusUpdatedAt: now });
-    saveTickets(); renderTickets(); addTicketModal.classList.remove('show');
+    var payload = {
+      ticket_number: num, description: desc, actions: document.getElementById('atActions').value.trim(), 
+      resolution: document.getElementById('atResolution').value.trim(), status: getStatusToggle(document.getElementById('atStatusToggle')), 
+      created_at: enteredAt, updated_at: now, status_updated_at: now
+    };
+    
+    document.getElementById('saveTicketBtn').innerText = "Guardando...";
+    const { error } = await supabase.from('tickets').insert([payload]);
+    document.getElementById('saveTicketBtn').innerText = "Guardar en Nube";
+    
+    if(error) { alert("Error saving: " + error.message); return; }
+    addTicketModal.classList.remove('show');
   });
-  document.getElementById('removeTicketBtn').addEventListener('click', function(){
-    if (!state.selectedTicketId) return; if (!confirm('Permanently remove this ticket?')) return;
-    state.tickets = state.tickets.filter(function(t){ return t.id !== state.selectedTicketId; }); state.selectedTicketId = null; saveTickets(); renderTickets();
+
+  // Eliminar Ticket en Supabase
+  document.getElementById('removeTicketBtn').addEventListener('click', async function(){
+    if (!state.selectedTicketId) return; if (!confirm('Permanently remove this ticket from the cloud?')) return;
+    await supabase.from('tickets').delete().eq('id', state.selectedTicketId);
+    state.selectedTicketId = null;
   });
 
   var ticketDetailModal = document.getElementById('ticketDetailModal');
@@ -799,12 +697,16 @@
     document.getElementById('editTicketBtn').style.display = 'inline-block'; document.getElementById('saveTicketChangesBtn').style.display = 'none';
     ticketDetailModal.classList.add('show');
   }
-  document.getElementById('tdStatusToggleView').addEventListener('click', function(){
+
+  // Cambio rápido de Status
+  document.getElementById('tdStatusToggleView').addEventListener('click', async function(){
     if (!editingTicketId) return; var t = state.tickets.find(function(x){ return x.id === editingTicketId; }); if (!t) return;
     var newStatus = getStatusToggle(document.getElementById('tdStatusToggleView'));
-    if (t.status !== newStatus) t.statusUpdatedAt = Date.now();
-    t.status = newStatus; t.updatedAt = Date.now(); saveTickets(); renderTickets();
+    if (t.status !== newStatus) {
+      await supabase.from('tickets').update({ status: newStatus, status_updated_at: Date.now(), updated_at: Date.now() }).eq('id', editingTicketId);
+    }
   });
+
   document.getElementById('closeTicketDetailBtn').addEventListener('click', function(){ ticketDetailModal.classList.remove('show'); editingTicketId = null; });
   document.getElementById('editTicketBtn').addEventListener('click', function(){
     var t = state.tickets.find(function(x){ return x.id === editingTicketId; }); if (!t) return;
@@ -814,51 +716,94 @@
     document.getElementById('tdViewMode').style.display = 'none'; document.getElementById('tdEditMode').style.display = 'block';
     document.getElementById('editTicketBtn').style.display = 'none'; document.getElementById('saveTicketChangesBtn').style.display = 'inline-block';
   });
-  document.getElementById('saveTicketChangesBtn').addEventListener('click', function(){
+
+  // Guardar Edición Completa
+  document.getElementById('saveTicketChangesBtn').addEventListener('click', async function(){
     var t = state.tickets.find(function(x){ return x.id === editingTicketId; }); if (!t) return;
     var num = document.getElementById('tdEditNumber').value.trim(), desc = document.getElementById('tdEditDescription').value.trim();
     if (!num || !desc){ alert('Please provide at least a ticket number and a problem description.'); return; }
     var newStatus = getStatusToggle(document.getElementById('tdEditStatusToggle'));
-    if (t.status !== newStatus) t.statusUpdatedAt = Date.now();
-    t.ticketNumber = num; t.createdAt = dateInputValueToTimestamp(document.getElementById('tdEditTicketDate').value);
-    t.description = desc; t.actions = document.getElementById('tdEditActions').value.trim(); t.resolution = document.getElementById('tdEditResolution').value.trim();
-    t.status = newStatus; t.updatedAt = Date.now(); saveTickets(); renderTickets(); openTicketDetail(t.id);
+    
+    var payload = {
+      ticket_number: num, description: desc, actions: document.getElementById('tdEditActions').value.trim(),
+      resolution: document.getElementById('tdEditResolution').value.trim(), status: newStatus, updated_at: Date.now(),
+      created_at: dateInputValueToTimestamp(document.getElementById('tdEditTicketDate').value)
+    };
+    if (t.status !== newStatus) payload.status_updated_at = Date.now();
+
+    document.getElementById('saveTicketChangesBtn').innerText = "Guardando...";
+    await supabase.from('tickets').update(payload).eq('id', editingTicketId);
+    document.getElementById('saveTicketChangesBtn').innerText = "Guardar Cambios";
+    
+    // Simular que cerramos y abrimos
+    t.status = newStatus; // actualiza local temporal para la visual visual, fetchTickets() refrescará
+    openTicketDetail(editingTicketId);
   });
 
-  // --- SCOPES LOGIC ---
+  // --- SCOPES ---
+  function renderScopes(){
+    var body = document.getElementById('scopeTableBody');
+    if (!state.scopes.length){
+      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No scope entries added yet.</td></tr>';
+      document.getElementById('removeScopeBtn').disabled = true; document.getElementById('editScopeBtn').disabled = true; return;
+    }
+    body.innerHTML = state.scopes.map(function(s){
+      var selected = state.selectedScopeId === s.id ? ' selected' : '';
+      return '<tr class="'+selected+'" data-id="'+s.id+'"><td><b>'+escapeHtml(s.scopeTitle)+'</b></td><td>'+escapeHtml(s.scopeDesc)+'</td><td><b>'+escapeHtml(s.wikiTitle)+'</b></td><td>'+escapeHtml(s.wikiDesc)+'</td></tr>';
+    }).join('');
+    body.querySelectorAll('tr[data-id]').forEach(function(row){
+      row.addEventListener('click', function(){ state.selectedScopeId = (state.selectedScopeId === row.getAttribute('data-id')) ? null : row.getAttribute('data-id'); renderScopes(); });
+    });
+    document.getElementById('removeScopeBtn').disabled = !state.selectedScopeId; document.getElementById('editScopeBtn').disabled = !state.selectedScopeId;
+  }
   var scopeModal = document.getElementById('scopeModal');
   document.getElementById('openAddScopeBtn').addEventListener('click', function(){
     editingScopeId = null; document.getElementById('scopeModalTitle').textContent = 'Añadir Scope';
-    document.getElementById('scScopeTitle').value = ''; document.getElementById('scScopeDesc').value = '';
-    document.getElementById('scWikiTitle').value = ''; document.getElementById('scWikiDesc').value = '';
+    document.getElementById('scScopeTitle').value = ''; document.getElementById('scScopeDesc').value = ''; document.getElementById('scWikiTitle').value = ''; document.getElementById('scWikiDesc').value = '';
     scopeModal.classList.add('show');
   });
   document.getElementById('cancelScopeModal').addEventListener('click', function(){ scopeModal.classList.remove('show'); });
   document.getElementById('editScopeBtn').addEventListener('click', function(){
     if (!state.selectedScopeId) return; var s = state.scopes.find(function(x){ return x.id === state.selectedScopeId; }); if (!s) return;
     editingScopeId = s.id; document.getElementById('scopeModalTitle').textContent = 'Editar Scope';
-    document.getElementById('scScopeTitle').value = s.scopeTitle; document.getElementById('scScopeDesc').value = s.scopeDesc;
-    document.getElementById('scWikiTitle').value = s.wikiTitle; document.getElementById('scWikiDesc').value = s.wikiDesc;
+    document.getElementById('scScopeTitle').value = s.scopeTitle; document.getElementById('scScopeDesc').value = s.scopeDesc; document.getElementById('scWikiTitle').value = s.wikiTitle; document.getElementById('scWikiDesc').value = s.wikiDesc;
     scopeModal.classList.add('show');
   });
-  document.getElementById('saveScopeBtn').addEventListener('click', function(){
-    var sTitle = document.getElementById('scScopeTitle').value.trim(), sDesc = document.getElementById('scScopeDesc').value.trim(),
-        wTitle = document.getElementById('scWikiTitle').value.trim(), wDesc = document.getElementById('scWikiDesc').value.trim();
+  document.getElementById('saveScopeBtn').addEventListener('click', async function(){
+    var sTitle = document.getElementById('scScopeTitle').value.trim(), sDesc = document.getElementById('scScopeDesc').value.trim(), wTitle = document.getElementById('scWikiTitle').value.trim(), wDesc = document.getElementById('scWikiDesc').value.trim();
     if (!sTitle){ alert('Please provide a SCOPE title.'); return; }
+    
+    var payload = { scope_title: sTitle, scope_desc: sDesc, wiki_title: wTitle, wiki_desc: wDesc };
+    
     if (editingScopeId){
-      var s = state.scopes.find(function(x){ return x.id === editingScopeId; });
-      if (s){ s.scopeTitle = sTitle; s.scopeDesc = sDesc; s.wikiTitle = wTitle; s.wikiDesc = wDesc; }
+      await supabase.from('scopes').update(payload).eq('id', editingScopeId);
     } else {
-      state.scopes.push({ id: uid(), scopeTitle: sTitle, scopeDesc: sDesc, wikiTitle: wTitle, wikiDesc: wDesc });
+      await supabase.from('scopes').insert([payload]);
     }
-    saveScopes(); renderScopes(); scopeModal.classList.remove('show'); editingScopeId = null;
+    scopeModal.classList.remove('show'); editingScopeId = null;
   });
-  document.getElementById('removeScopeBtn').addEventListener('click', function(){
+  document.getElementById('removeScopeBtn').addEventListener('click', async function(){
     if (!state.selectedScopeId) return; if (!confirm('Permanently remove this scope?')) return;
-    state.scopes = state.scopes.filter(function(s){ return s.id !== state.selectedScopeId; }); state.selectedScopeId = null; saveScopes(); renderScopes();
+    await supabase.from('scopes').delete().eq('id', state.selectedScopeId);
+    state.selectedScopeId = null;
   });
 
-  // --- ESCALATIONS LOGIC ---
+  // --- ESCALATIONS ---
+  function renderEscalations(){
+    var body = document.getElementById('escTableBody');
+    if (!state.escalations.length){
+      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No escalation paths added yet.</td></tr>';
+      document.getElementById('removeEscBtn').disabled = true; document.getElementById('editEscBtn').disabled = true; return;
+    }
+    body.innerHTML = state.escalations.map(function(e){
+      var selected = state.selectedEscId === e.id ? ' selected' : '';
+      return '<tr class="'+selected+'" data-id="'+e.id+'"><td>'+escapeHtml(e.description)+'</td><td>'+escapeHtml(e.team)+'</td><td>'+escapeHtml(e.path)+'</td><td>'+escapeHtml(e.macro)+'</td></tr>';
+    }).join('');
+    body.querySelectorAll('tr[data-id]').forEach(function(row){
+      row.addEventListener('click', function(){ state.selectedEscId = (state.selectedEscId === row.getAttribute('data-id')) ? null : row.getAttribute('data-id'); renderEscalations(); });
+    });
+    document.getElementById('removeEscBtn').disabled = !state.selectedEscId; document.getElementById('editEscBtn').disabled = !state.selectedEscId;
+  }
   var escModal = document.getElementById('escModal');
   document.getElementById('openAddEscBtn').addEventListener('click', function(){
     editingEscId = null; document.getElementById('escModalTitle').textContent = 'Añadir Escalation Entry';
@@ -872,22 +817,25 @@
     document.getElementById('escDescription').value = e.description; document.getElementById('escTeam').value = e.team; document.getElementById('escPath').value = e.path; document.getElementById('escMacro').value = e.macro;
     escModal.classList.add('show');
   });
-  document.getElementById('saveEscBtn').addEventListener('click', function(){
-    var desc = document.getElementById('escDescription').value.trim(), team = document.getElementById('escTeam').value.trim(),
-        path = document.getElementById('escPath').value.trim(), macro = document.getElementById('escMacro').value.trim();
+  document.getElementById('saveEscBtn').addEventListener('click', async function(){
+    var desc = document.getElementById('escDescription').value.trim(), team = document.getElementById('escTeam').value.trim(), path = document.getElementById('escPath').value.trim(), macro = document.getElementById('escMacro').value.trim();
     if (!desc || !team){ alert('Please provide at least a description and an escalation team.'); return; }
-    if (editingEscId){ var e = state.escalations.find(function(x){ return x.id === editingEscId; }); if (e){ e.description = desc; e.team = team; e.path = path; e.macro = macro; }
-    } else { state.escalations.push({ id: uid(), description: desc, team: team, path: path, macro: macro }); }
-    saveEscalations(); renderEscalations(); escModal.classList.remove('show'); editingEscId = null;
+    
+    var payload = { description: desc, team: team, path: path, macro: macro };
+    if (editingEscId){
+      await supabase.from('escalations').update(payload).eq('id', editingEscId);
+    } else {
+      await supabase.from('escalations').insert([payload]);
+    }
+    escModal.classList.remove('show'); editingEscId = null;
   });
-  document.getElementById('removeEscBtn').addEventListener('click', function(){
+  document.getElementById('removeEscBtn').addEventListener('click', async function(){
     if (!state.selectedEscId) return; if (!confirm('Permanently remove this escalation entry?')) return;
-    state.escalations = state.escalations.filter(function(e){ return e.id !== state.selectedEscId; }); state.selectedEscId = null; saveEscalations(); renderEscalations();
+    await supabase.from('escalations').delete().eq('id', state.selectedEscId);
+    state.selectedEscId = null;
   });
 
-  // --- EXPORT / IMPORT LOGIC ---
-  
-  // Specific Export for Scopes only
+  // --- EXPORT / IMPORT (CLOUD BATCH) ---
   document.getElementById('exportScopeBtn').addEventListener('click', function(){
     if (!state.scopes.length){ alert('There are no scope entries to export yet.'); return; }
     var rows = state.scopes.map(function(s){ return { 'ID (Do Not Modify)': s.id, 'SCOPE': s.scopeTitle, 'Scope Description': s.scopeDesc, 'Wiki / Path': s.wikiTitle, 'Wiki Description': s.wikiDesc }; });
@@ -895,91 +843,64 @@
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Scopes'); XLSX.writeFile(wb, 'Twilio_Scopes.xlsx');
   });
 
-  // Global Export (All Data)
   document.getElementById('exportAllBtn').addEventListener('click', function(){
     var wb = XLSX.utils.book_new();
+    var tRows = state.tickets.map(function(t){ return { 'ID (Do Not Modify)': t.id, 'Ticket Number': t.ticketNumber, 'Problem Description': t.description, 'Actions Taken': t.actions, 'Resolution': t.resolution, 'Status': t.status, 'Created Time': t.createdAt, 'Updated Time': t.updatedAt, 'Status Time': t.statusUpdatedAt }; });
+    var wsT = XLSX.utils.json_to_sheet(tRows); wsT['!cols'] = [{hidden:true},{wch:16},{wch:40},{wch:40},{wch:40},{wch:14},{hidden:true},{hidden:true},{hidden:true}]; XLSX.utils.book_append_sheet(wb, wsT, 'Tickets');
 
-    var tRows = state.tickets.map(function(t){
-      return { 'ID (Do Not Modify)': t.id, 'Ticket Number': t.ticketNumber, 'Problem Description': t.description, 'Actions Taken': t.actions, 'Resolution': t.resolution, 'Status': t.status, 'Created Time': t.createdAt, 'Updated Time': t.updatedAt, 'Status Time': t.statusUpdatedAt };
-    });
-    var wsT = XLSX.utils.json_to_sheet(tRows); wsT['!cols'] = [{hidden:true},{wch:16},{wch:40},{wch:40},{wch:40},{wch:14},{hidden:true},{hidden:true},{hidden:true}];
-    XLSX.utils.book_append_sheet(wb, wsT, 'Tickets');
+    var sRows = state.scopes.map(function(s){ return { 'ID (Do Not Modify)': s.id, 'SCOPE': s.scopeTitle, 'Scope Description': s.scopeDesc, 'Wiki / Path': s.wikiTitle, 'Wiki Description': s.wikiDesc }; });
+    var wsS = XLSX.utils.json_to_sheet(sRows); wsS['!cols'] = [{hidden:true},{wch:30},{wch:40},{wch:30},{wch:40}]; XLSX.utils.book_append_sheet(wb, wsS, 'Scopes');
 
-    var sRows = state.scopes.map(function(s){
-      return { 'ID (Do Not Modify)': s.id, 'SCOPE': s.scopeTitle, 'Scope Description': s.scopeDesc, 'Wiki / Path': s.wikiTitle, 'Wiki Description': s.wikiDesc };
-    });
-    var wsS = XLSX.utils.json_to_sheet(sRows); wsS['!cols'] = [{hidden:true},{wch:30},{wch:40},{wch:30},{wch:40}];
-    XLSX.utils.book_append_sheet(wb, wsS, 'Scopes');
-
-    var eRows = state.escalations.map(function(e){
-      return { 'ID (Do Not Modify)': e.id, 'Description': e.description, 'Escalation Team': e.team, 'Escalation Path': e.path, 'Macro to be Used': e.macro };
-    });
-    var wsE = XLSX.utils.json_to_sheet(eRows); wsE['!cols'] = [{hidden:true},{wch:40},{wch:24},{wch:24},{wch:40}];
-    XLSX.utils.book_append_sheet(wb, wsE, 'Escalation Path');
+    var eRows = state.escalations.map(function(e){ return { 'ID (Do Not Modify)': e.id, 'Description': e.description, 'Escalation Team': e.team, 'Escalation Path': e.path, 'Macro to be Used': e.macro }; });
+    var wsE = XLSX.utils.json_to_sheet(eRows); wsE['!cols'] = [{hidden:true},{wch:40},{wch:24},{wch:24},{wch:40}]; XLSX.utils.book_append_sheet(wb, wsE, 'Escalation Path');
 
     XLSX.writeFile(wb, 'Twilio_Case_Tracker_Full.xlsx');
   });
 
-  // Global Import
   document.getElementById('importBtn').addEventListener('click', function(){ document.getElementById('importFile').click(); });
   document.getElementById('importFile').addEventListener('change', function(e){
     var file = e.target.files[0]; if(!file) return;
     var reader = new FileReader();
-    reader.onload = function(evt){
+    reader.onload = async function(evt){
       try {
+        document.getElementById('importBtn').innerText = "Importando Nube...";
         var data = new Uint8Array(evt.target.result);
         var workbook = XLSX.read(data, {type: 'array'});
+        
+        // Batch arrays for Supabase UPSERT
+        var tUpserts = [], sUpserts = [], eUpserts = [];
 
         if (workbook.Sheets['Tickets']){
           var tData = XLSX.utils.sheet_to_json(workbook.Sheets['Tickets']);
-          tData.forEach(function(row){
-            var id = row['ID (Do Not Modify)'];
-            var existing = state.tickets.find(function(t){ return t.id === id; });
-            if(existing){
-              existing.ticketNumber = row['Ticket Number']; existing.description = row['Problem Description'];
-              existing.actions = row['Actions Taken']; existing.resolution = row['Resolution']; existing.status = row['Status'];
-            } else {
-              state.tickets.push({ id: id || uid(), ticketNumber: row['Ticket Number'], description: row['Problem Description'], actions: row['Actions Taken'], resolution: row['Resolution'], status: row['Status'] || 'PENDING', createdAt: row['Created Time'] || Date.now(), updatedAt: row['Updated Time'] || Date.now(), statusUpdatedAt: row['Status Time'] || Date.now() });
-            }
+          tData.forEach(row => {
+            tUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, ticket_number: row['Ticket Number'], description: row['Problem Description'], actions: row['Actions Taken'], resolution: row['Resolution'], status: row['Status'] || 'PENDING', created_at: row['Created Time'] || Date.now(), updated_at: row['Updated Time'] || Date.now(), status_updated_at: row['Status Time'] || Date.now() });
           });
+          if(tUpserts.length > 0) await supabase.from('tickets').upsert(tUpserts);
         }
 
         if (workbook.Sheets['Scopes']){
           var sData = XLSX.utils.sheet_to_json(workbook.Sheets['Scopes']);
-          sData.forEach(function(row){
-            var id = row['ID (Do Not Modify)'];
-            var existing = state.scopes.find(function(s){ return s.id === id; });
-            if(existing){
-              existing.scopeTitle = row['SCOPE']; existing.scopeDesc = row['Scope Description'];
-              existing.wikiTitle = row['Wiki / Path']; existing.wikiDesc = row['Wiki Description'];
-            } else {
-              state.scopes.push({ id: id || uid(), scopeTitle: row['SCOPE'], scopeDesc: row['Scope Description'], wikiTitle: row['Wiki / Path'], wikiDesc: row['Wiki Description'] });
-            }
+          sData.forEach(row => {
+            sUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, scope_title: row['SCOPE'], scope_desc: row['Scope Description'], wiki_title: row['Wiki / Path'], wiki_desc: row['Wiki Description'] });
           });
+          if(sUpserts.length > 0) await supabase.from('scopes').upsert(sUpserts);
         }
 
         if (workbook.Sheets['Escalation Path']){
           var eData = XLSX.utils.sheet_to_json(workbook.Sheets['Escalation Path']);
-          eData.forEach(function(row){
-            var id = row['ID (Do Not Modify)'];
-            var existing = state.escalations.find(function(esc){ return esc.id === id; });
-            if(existing){
-              existing.description = row['Description']; existing.team = row['Escalation Team'];
-              existing.path = row['Escalation Path']; existing.macro = row['Macro to be Used'];
-            } else {
-              state.escalations.push({ id: id || uid(), description: row['Description'], team: row['Escalation Team'], path: row['Escalation Path'], macro: row['Macro to be Used'] });
-            }
+          eData.forEach(row => {
+            eUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, description: row['Description'], team: row['Escalation Team'], path: row['Escalation Path'], macro: row['Macro to be Used'] });
           });
+          if(eUpserts.length > 0) await supabase.from('escalations').upsert(eUpserts);
         }
         
-        saveAllToLocalStorage();
-        renderTickets(); renderScopes(); renderEscalations();
-        alert('Data Imported Successfully!');
+        document.getElementById('importBtn').innerText = "Import Data (Cloud Sync)";
+        alert('Data Imported directly to Supabase Successfully!');
       } catch (err) {
+        document.getElementById('importBtn').innerText = "Import Data (Cloud Sync)";
         alert('Error importing data. Make sure it is the correct exported file.');
         console.error(err);
       }
-      // Reset input
       document.getElementById('importFile').value = '';
     };
     reader.readAsArrayBuffer(file);
@@ -989,60 +910,33 @@
   var searchInput = document.getElementById('searchInput');
   function runSearch(){
     var q = searchInput.value.toLowerCase();
-    
-    // Filter Tickets
     var tCards = document.querySelectorAll('#ticketGrid .ticket-card');
     tCards.forEach(function(card){
       var t = state.tickets.find(x => x.id === card.getAttribute('data-id'));
-      if(t && ((t.ticketNumber||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))) card.style.display = 'block';
-      else card.style.display = 'none';
+      if(t && ((t.ticketNumber||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))) card.style.display = 'block'; else card.style.display = 'none';
     });
-    
-    // Filter Scopes
     var sRows = document.querySelectorAll('#scopeTableBody tr[data-id]');
     sRows.forEach(function(row){
       var s = state.scopes.find(x => x.id === row.getAttribute('data-id'));
-      if(s && ((s.scopeTitle||'').toLowerCase().includes(q) || (s.scopeDesc||'').toLowerCase().includes(q) || (s.wikiTitle||'').toLowerCase().includes(q))) row.style.display = 'table-row';
-      else row.style.display = 'none';
+      if(s && ((s.scopeTitle||'').toLowerCase().includes(q) || (s.scopeDesc||'').toLowerCase().includes(q) || (s.wikiTitle||'').toLowerCase().includes(q))) row.style.display = 'table-row'; else row.style.display = 'none';
     });
-    
-    // Filter Escalations
     var eRows = document.querySelectorAll('#escTableBody tr[data-id]');
     eRows.forEach(function(row){
       var e = state.escalations.find(x => x.id === row.getAttribute('data-id'));
-      if(e && ((e.description||'').toLowerCase().includes(q) || (e.team||'').toLowerCase().includes(q))) row.style.display = 'table-row';
-      else row.style.display = 'none';
+      if(e && ((e.description||'').toLowerCase().includes(q) || (e.team||'').toLowerCase().includes(q))) row.style.display = 'table-row'; else row.style.display = 'none';
     });
   }
   searchInput.addEventListener('input', runSearch);
 
   // Close modals on background click
   document.querySelectorAll('.modal-overlay').forEach(function(overlay){
-    overlay.addEventListener('click', function(ev){ if (ev.target === overlay) overlay.classList.remove('show'); });
+    overlay.addEventListener('click', function(ev){ if (ev.target === overlay && overlay.id !== 'loginOverlay') overlay.classList.remove('show'); });
   });
-
-  document.getElementById('connectDriveBtn').addEventListener('click', connectGoogleDrive);
-  document.getElementById('disconnectDriveBtn').addEventListener('click', disconnectGoogleDrive);
-  document.getElementById('chooseFileBtn').addEventListener('click', openDriveFilePicker);
-  document.getElementById('createSharedFileBtn').addEventListener('click', function(){
-    if (confirm('Create a brand-new shared data file in YOUR Drive?')) createSharedDriveFile();
-  });
-
-  function attemptSilentDriveReconnect(){
-    if (!ensureTokenClient()) return;
-    tokenClient.callback = function(resp){
-      if (resp.error) return; driveAccessToken = resp.access_token; driveConnected = true; updateDriveStatusUI();
-      var cachedFileId = localStorage.getItem(LS_DRIVE_FILE_ID_KEY);
-      if (cachedFileId){ driveFileId = cachedFileId; loadFromDrive(); }
-    };
-    try{ tokenClient.requestAccessToken({ prompt: 'none' }); }catch(e){}
-  }
 
   // Init
   buildEmbers();
   document.addEventListener('DOMContentLoaded', function(){
-    loadData(); updateDriveStatusUI();
-    setTimeout(function(){ loadPickerApi(); attemptSilentDriveReconnect(); }, 800);
+    checkSession();
   });
 })();
 </script>
