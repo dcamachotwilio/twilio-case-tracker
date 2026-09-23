@@ -58,7 +58,7 @@
   @keyframes rise{ 0%{ transform: translateY(0) translateX(0); opacity:0.6;} 100%{ transform: translateY(-115vh) translateX(var(--drift,20px)); opacity:0;} }
   @keyframes flicker{0%,100%{ opacity:0.6;} 50%{opacity:0.2;}}
   
-  .page{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 18px 70px; display:none;} 
+  .page{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 18px 70px; display:none;} /* Oculto hasta login */
 
   /* ---------- Login Overlay ---------- */
   #loginOverlay {
@@ -104,8 +104,6 @@
   
   .global-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
   .user-info-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; font-size: 12.5px; color: var(--text-dim); }
-  .drive-dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); display:inline-block; flex-shrink:0;}
-  .drive-dot.connected{background:var(--ok); box-shadow:0 0 6px var(--ok);}
 
   /* ---------- Sections ---------- */
   section.block{margin-top:44px;}
@@ -134,19 +132,8 @@
   .btn-row{display:flex; gap:10px; flex-wrap:wrap;}
   .btn-sm{padding:6px 12px; font-size:12px;}
 
-  /* ---------- Advanced Filters ---------- */
-  .advanced-filters {
-    display: flex; gap: 10px; flex-wrap: wrap; background: rgba(255,255,255,0.02);
-    padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--card-border);
-    margin-bottom: 16px; width: 100%; align-items: center;
-  }
-  .filter-label { font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
-  .filter-select { 
-    background: var(--card-bg); color: var(--text-light); border: 1px solid var(--card-border); 
-    border-radius: 6px; padding: 6px 10px; font-size: 12px; font-family: 'Inter', sans-serif; outline: none; cursor: pointer; 
-  }
-  .filter-select:focus { border-color: var(--twilio-red); }
-  .filter-select option { background: var(--ocean-deep); }
+  #ticketFilter { background: var(--card-bg); color: var(--text-light); border: 1px solid var(--card-border); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; cursor: pointer; }
+  #ticketFilter option { background: var(--ocean-deep); }
 
   /* ---------- Ticket grid ---------- */
   .ticket-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px;}
@@ -266,7 +253,7 @@
 
     <div class="user-info-row">
       <div class="drive-dot connected"></div>
-      Conectado en la nube como: <strong id="userEmailDisplay"></strong>
+      Conectado como: <strong id="userEmailDisplay"></strong>
       <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin-left: 10px;">Cerrar Sesión</button>
     </div>
   </header>
@@ -274,35 +261,22 @@
   <!-- ================= CASE REFERENCE WORKFLOWS ================= -->
   <section class="block">
     <div class="block-head">
-      <h2>Case Reference Workflows <span class="tag-pill">Tickets</span></h2>
+      <h2>
+        Case Reference Workflows <span class="tag-pill">Tickets</span>
+        <select id="ticketFilter">
+          <option value="ALL">All Statuses</option>
+          <option value="ON-HOLD">On-Hold</option>
+          <option value="PENDING">Pending</option>
+          <option value="SOLVED">Solved</option>
+          <option value="CLOSED">Closed</option>
+          <option value="KICKED">Kicked</option>
+        </select>
+      </h2>
       <div class="btn-row">
         <button class="btn btn-primary" id="openAddTicketBtn">+ Añadir Ticket</button>
         <button class="btn btn-danger" id="removeTicketBtn" disabled>Eliminar</button>
       </div>
     </div>
-
-    <!-- PANEL DE FILTROS AVANZADOS -->
-    <div class="advanced-filters">
-      <span class="filter-label">Filtros:</span>
-      <select id="ticketStatusFilter" class="filter-select">
-        <option value="ALL">Status: Todos</option>
-        <option value="ON-HOLD">On-Hold</option>
-        <option value="PENDING">Pending</option>
-        <option value="SOLVED">Solved</option>
-        <option value="CLOSED">Closed</option>
-        <option value="KICKED">Kicked</option>
-      </select>
-      <select id="ticketDateFilter" class="filter-select">
-        <option value="ALL">Fecha: Todo el tiempo</option>
-        <option value="7">Últimos 7 días</option>
-        <option value="30">Últimos 30 días</option>
-      </select>
-      <select id="ticketSortFilter" class="filter-select">
-        <option value="DESC">Orden: Más Recientes Primero</option>
-        <option value="ASC">Orden: Más Antiguos Primero</option>
-      </select>
-    </div>
-
     <div class="ticket-grid" id="ticketGrid"></div>
   </section>
 
@@ -347,7 +321,7 @@
     </div>
   </section>
 
-  <footer class="page-footer">Twilio Case Reference Workflows &middot; Information synced automatically & securely with Supabase.</footer>
+  <footer class="page-footer">Twilio Case Reference Workflows &middot; Synchronized securely with Supabase PostgreSQL.</footer>
 </div>
 
 <!-- ============ MODALS ============ -->
@@ -373,7 +347,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelAddTicket">Cancelar</button>
-      <button class="btn btn-primary" id="saveTicketBtn">Guardar en Base de Datos</button>
+      <button class="btn btn-primary" id="saveTicketBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -433,7 +407,7 @@
     <div class="field"><label>Descripción del Wiki / Path</label><textarea id="scWikiDesc"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelScopeModal">Cancelar</button>
-      <button class="btn btn-primary" id="saveScopeBtn">Guardar en Base de Datos</button>
+      <button class="btn btn-primary" id="saveScopeBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -448,7 +422,7 @@
     <div class="field"><label>Macro to be Used</label><textarea id="escMacro"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancelEscModal">Cancelar</button>
-      <button class="btn btn-primary" id="saveEscBtn">Guardar en Base de Datos</button>
+      <button class="btn btn-primary" id="saveEscBtn">Guardar en Nube</button>
     </div>
   </div>
 </div>
@@ -460,7 +434,7 @@
   // ==========================================
   // CONFIGURACIÓN DE SUPABASE (DB & AUTH)
   // ==========================================
-  const SUPABASE_URL = 'https://korhfygkdkvswfmzknhw.supabase.co'; 
+  const SUPABASE_URL = 'https://korhfygkdkvswfmmzknhw.supabase.co'; 
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvcmhmeWdrZGt2c3dmbXprbmh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDQzODIsImV4cCI6MjEwNTY4MDM4Mn0.tmVCS9P5TBDdW7VDvBV3SFaEtPOR4_OfGHju-anGVw4';
   
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -575,11 +549,12 @@
     await Promise.all([fetchTickets(), fetchScopes(), fetchEscalations()]);
   }
 
-  // LECTURA DIRECTO DE SUPABASE
+  // LECTURA
   async function fetchTickets() {
     const { data, error } = await supabase.from('tickets').select('*');
     if (error) { console.error("Error fetching tickets:", error); return; }
     
+    // Mapear de SQL a nuestro JS Local
     state.tickets = data.map(t => ({
       id: t.id, ticketNumber: t.ticket_number, description: t.description, actions: t.actions, 
       resolution: t.resolution, status: t.status, createdAt: t.created_at, updatedAt: t.updated_at, statusUpdatedAt: t.status_updated_at
@@ -594,7 +569,7 @@
         needsUpdate = true;
       }
     }
-    if(!needsUpdate) { renderTickets(); }
+    if(needsUpdate) { /* fetchTickets se llamará solo por el realtime */ } else { renderTickets(); }
   }
 
   async function fetchScopes() {
@@ -621,50 +596,20 @@
   }
 
   // ==========================================
-  // INTERFAZ Y RENDERIZADO (CON FILTROS AVANZADOS)
+  // INTERFAZ Y RENDERIZADO
   // ==========================================
 
   // --- TICKETS ---
   function renderTickets(){
     var grid = document.getElementById('ticketGrid'), now = Date.now();
+    var filterEl = document.getElementById('ticketFilter');
+    var currentFilter = filterEl ? filterEl.value : 'ALL';
+
+    state.tickets.sort(function(a, b){ return (a.createdAt || 0) - (b.createdAt || 0); });
     
-    // Leer valores de los filtros
-    var statusFilter = document.getElementById('ticketStatusFilter').value;
-    var dateFilter = document.getElementById('ticketDateFilter').value;
-    var sortFilter = document.getElementById('ticketSortFilter').value;
-    var searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    var visibleTickets = state.tickets.filter(function(t){ return currentFilter === 'ALL' || t.status === currentFilter; });
 
-    // Filtrar Array de Tickets
-    var visibleTickets = state.tickets.filter(function(t){
-      // Filtro de Status
-      if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
-      
-      // Filtro de Fecha
-      if (dateFilter !== 'ALL') {
-        var daysMs = parseInt(dateFilter) * 24 * 60 * 60 * 1000;
-        if ((now - t.createdAt) > daysMs) return false;
-      }
-      
-      // Búsqueda Textual (Global Search)
-      if (searchQuery) {
-        var matchNum = (t.ticketNumber || '').toLowerCase().includes(searchQuery);
-        var matchDesc = (t.description || '').toLowerCase().includes(searchQuery);
-        if (!matchNum && !matchDesc) return false;
-      }
-
-      return true; 
-    });
-
-    // Ordenar (Sorting)
-    visibleTickets.sort(function(a, b){
-      if (sortFilter === 'DESC') {
-        return (b.createdAt || 0) - (a.createdAt || 0); // Más Recientes
-      } else {
-        return (a.createdAt || 0) - (b.createdAt || 0); // Más Antiguos
-      }
-    });
-
-    if (!visibleTickets.length){ grid.innerHTML = '<div class="empty-state">No se encontraron tickets con estos filtros.</div>'; document.getElementById('removeTicketBtn').disabled = true; return; }
+    if (!visibleTickets.length){ grid.innerHTML = '<div class="empty-state">No tickets found for this view.</div>'; document.getElementById('removeTicketBtn').disabled = true; return; }
 
     grid.innerHTML = visibleTickets.map(function(t){
       var selected = state.selectedTicketId === t.id ? ' selected' : '', enteredDate = formatDateShort(t.createdAt || now);
@@ -688,7 +633,7 @@
       btn.addEventListener('click', async function(ev){
         ev.stopPropagation(); var id = btn.getAttribute('data-id'), t = state.tickets.find(function(x){ return x.id === id;}); if (!t) return;
         
-        // Actualizar en DB Instantáneamente
+        // Actualizar en DB
         await supabase.from('tickets').update({ updated_at: Date.now(), status_updated_at: Date.now() }).eq('id', id);
         
         var notice = document.getElementById('notice-'+id);
@@ -697,11 +642,7 @@
     });
     document.getElementById('removeTicketBtn').disabled = !state.selectedTicketId;
   }
-
-  // Event Listeners para Filtros Avanzados
-  document.getElementById('ticketStatusFilter').addEventListener('change', renderTickets);
-  document.getElementById('ticketDateFilter').addEventListener('change', renderTickets);
-  document.getElementById('ticketSortFilter').addEventListener('change', renderTickets);
+  if (document.getElementById('ticketFilter')){ document.getElementById('ticketFilter').addEventListener('change', renderTickets); }
 
   var addTicketModal = document.getElementById('addTicketModal');
   wireStatusToggle(document.getElementById('atStatusToggle'));
@@ -726,7 +667,7 @@
     
     document.getElementById('saveTicketBtn').innerText = "Guardando...";
     const { error } = await supabase.from('tickets').insert([payload]);
-    document.getElementById('saveTicketBtn').innerText = "Guardar en Base de Datos";
+    document.getElementById('saveTicketBtn').innerText = "Guardar en Nube";
     
     if(error) { alert("Error saving: " + error.message); return; }
     addTicketModal.classList.remove('show');
@@ -734,7 +675,7 @@
 
   // Eliminar Ticket en Supabase
   document.getElementById('removeTicketBtn').addEventListener('click', async function(){
-    if (!state.selectedTicketId) return; if (!confirm('Permanently remove this ticket from the database?')) return;
+    if (!state.selectedTicketId) return; if (!confirm('Permanently remove this ticket from the cloud?')) return;
     await supabase.from('tickets').delete().eq('id', state.selectedTicketId);
     state.selectedTicketId = null;
   });
@@ -757,7 +698,7 @@
     ticketDetailModal.classList.add('show');
   }
 
-  // Cambio rápido de Status Directo a BD
+  // Cambio rápido de Status
   document.getElementById('tdStatusToggleView').addEventListener('click', async function(){
     if (!editingTicketId) return; var t = state.tickets.find(function(x){ return x.id === editingTicketId; }); if (!t) return;
     var newStatus = getStatusToggle(document.getElementById('tdStatusToggleView'));
@@ -776,7 +717,7 @@
     document.getElementById('editTicketBtn').style.display = 'none'; document.getElementById('saveTicketChangesBtn').style.display = 'inline-block';
   });
 
-  // Guardar Edición Completa en BD
+  // Guardar Edición Completa
   document.getElementById('saveTicketChangesBtn').addEventListener('click', async function(){
     var t = state.tickets.find(function(x){ return x.id === editingTicketId; }); if (!t) return;
     var num = document.getElementById('tdEditNumber').value.trim(), desc = document.getElementById('tdEditDescription').value.trim();
@@ -794,25 +735,19 @@
     await supabase.from('tickets').update(payload).eq('id', editingTicketId);
     document.getElementById('saveTicketChangesBtn').innerText = "Guardar Cambios";
     
-    t.status = newStatus; // actualiza local temporal para no esperar visualmente
+    // Simular que cerramos y abrimos
+    t.status = newStatus; // actualiza local temporal para la visual visual, fetchTickets() refrescará
     openTicketDetail(editingTicketId);
   });
 
   // --- SCOPES ---
   function renderScopes(){
     var body = document.getElementById('scopeTableBody');
-    var searchQuery = document.getElementById('searchInput').value.toLowerCase();
-    
-    var visibleScopes = state.scopes.filter(function(s) {
-       if(!searchQuery) return true;
-       return (s.scopeTitle||'').toLowerCase().includes(searchQuery) || (s.scopeDesc||'').toLowerCase().includes(searchQuery) || (s.wikiTitle||'').toLowerCase().includes(searchQuery);
-    });
-
-    if (!visibleScopes.length){
-      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No scope entries found.</td></tr>';
+    if (!state.scopes.length){
+      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No scope entries added yet.</td></tr>';
       document.getElementById('removeScopeBtn').disabled = true; document.getElementById('editScopeBtn').disabled = true; return;
     }
-    body.innerHTML = visibleScopes.map(function(s){
+    body.innerHTML = state.scopes.map(function(s){
       var selected = state.selectedScopeId === s.id ? ' selected' : '';
       return '<tr class="'+selected+'" data-id="'+s.id+'"><td><b>'+escapeHtml(s.scopeTitle)+'</b></td><td>'+escapeHtml(s.scopeDesc)+'</td><td><b>'+escapeHtml(s.wikiTitle)+'</b></td><td>'+escapeHtml(s.wikiDesc)+'</td></tr>';
     }).join('');
@@ -821,7 +756,6 @@
     });
     document.getElementById('removeScopeBtn').disabled = !state.selectedScopeId; document.getElementById('editScopeBtn').disabled = !state.selectedScopeId;
   }
-  
   var scopeModal = document.getElementById('scopeModal');
   document.getElementById('openAddScopeBtn').addEventListener('click', function(){
     editingScopeId = null; document.getElementById('scopeModalTitle').textContent = 'Añadir Scope';
@@ -857,18 +791,11 @@
   // --- ESCALATIONS ---
   function renderEscalations(){
     var body = document.getElementById('escTableBody');
-    var searchQuery = document.getElementById('searchInput').value.toLowerCase();
-    
-    var visibleEsc = state.escalations.filter(function(e){
-       if(!searchQuery) return true;
-       return (e.description||'').toLowerCase().includes(searchQuery) || (e.team||'').toLowerCase().includes(searchQuery);
-    });
-
-    if (!visibleEsc.length){
-      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No escalation paths found.</td></tr>';
+    if (!state.escalations.length){
+      body.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim); text-align:center;">No escalation paths added yet.</td></tr>';
       document.getElementById('removeEscBtn').disabled = true; document.getElementById('editEscBtn').disabled = true; return;
     }
-    body.innerHTML = visibleEsc.map(function(e){
+    body.innerHTML = state.escalations.map(function(e){
       var selected = state.selectedEscId === e.id ? ' selected' : '';
       return '<tr class="'+selected+'" data-id="'+e.id+'"><td>'+escapeHtml(e.description)+'</td><td>'+escapeHtml(e.team)+'</td><td>'+escapeHtml(e.path)+'</td><td>'+escapeHtml(e.macro)+'</td></tr>';
     }).join('');
@@ -877,7 +804,6 @@
     });
     document.getElementById('removeEscBtn').disabled = !state.selectedEscId; document.getElementById('editEscBtn').disabled = !state.selectedEscId;
   }
-
   var escModal = document.getElementById('escModal');
   document.getElementById('openAddEscBtn').addEventListener('click', function(){
     editingEscId = null; document.getElementById('escModalTitle').textContent = 'Añadir Escalation Entry';
@@ -909,7 +835,7 @@
     state.selectedEscId = null;
   });
 
-  // --- EXPORT / IMPORT (CLOUD BATCH CON INTELIGENCIA) ---
+  // --- EXPORT / IMPORT (CLOUD BATCH) ---
   document.getElementById('exportScopeBtn').addEventListener('click', function(){
     if (!state.scopes.length){ alert('There are no scope entries to export yet.'); return; }
     var rows = state.scopes.map(function(s){ return { 'ID (Do Not Modify)': s.id, 'SCOPE': s.scopeTitle, 'Scope Description': s.scopeDesc, 'Wiki / Path': s.wikiTitle, 'Wiki Description': s.wikiDesc }; });
@@ -931,7 +857,6 @@
     XLSX.writeFile(wb, 'Twilio_Case_Tracker_Full.xlsx');
   });
 
-  // Importación con Inteligencia de Limpieza
   document.getElementById('importBtn').addEventListener('click', function(){ document.getElementById('importFile').click(); });
   document.getElementById('importFile').addEventListener('change', function(e){
     var file = e.target.files[0]; if(!file) return;
@@ -942,92 +867,38 @@
         var data = new Uint8Array(evt.target.result);
         var workbook = XLSX.read(data, {type: 'array'});
         
+        // Batch arrays for Supabase UPSERT
         var tUpserts = [], sUpserts = [], eUpserts = [];
 
-        // LIMPIEZA DE TICKETS
         if (workbook.Sheets['Tickets']){
           var tData = XLSX.utils.sheet_to_json(workbook.Sheets['Tickets']);
           tData.forEach(row => {
-            // Filtro Anti-Spam: Ignorar filas vacías de Excel
-            if (!row['Ticket Number'] && !row['Problem Description']) return;
-            
-            // Inteligencia de Estado: Convierte formatos viejos a los nuevos permitidos en DB
-            var rawStatus = (row['Status'] || 'PENDING').toString().toUpperCase();
-            if (rawStatus.includes('OPEN') || rawStatus.includes('CUSTOMER')) rawStatus = 'PENDING';
-            else if (rawStatus.includes('SOLVED')) rawStatus = 'SOLVED';
-            else if (rawStatus.includes('HOLD')) rawStatus = 'ON-HOLD';
-            else if (rawStatus.includes('CLOSED')) rawStatus = 'CLOSED';
-            else rawStatus = 'PENDING';
-
-            var payload = {
-              ticket_number: row['Ticket Number'] || 'S/N',
-              description: row['Problem Description'] || '',
-              actions: row['Actions Taken'] || '',
-              resolution: row['Resolution'] || '',
-              status: rawStatus,
-              created_at: row['Created Time'] ? new Date(row['Created Time']).getTime() : Date.now(),
-              updated_at: row['Updated Time'] ? new Date(row['Updated Time']).getTime() : Date.now(),
-              status_updated_at: row['Status Time'] ? new Date(row['Status Time']).getTime() : Date.now()
-            };
-            if (row['ID (Do Not Modify)']) payload.id = row['ID (Do Not Modify)'];
-            tUpserts.push(payload);
+            tUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, ticket_number: row['Ticket Number'], description: row['Problem Description'], actions: row['Actions Taken'], resolution: row['Resolution'], status: row['Status'] || 'PENDING', created_at: row['Created Time'] || Date.now(), updated_at: row['Updated Time'] || Date.now(), status_updated_at: row['Status Time'] || Date.now() });
           });
-          
-          if(tUpserts.length > 0) {
-            const { error } = await supabase.from('tickets').upsert(tUpserts);
-            if (error) throw error;
-          }
+          if(tUpserts.length > 0) await supabase.from('tickets').upsert(tUpserts);
         }
 
-        // LIMPIEZA DE SCOPES
         if (workbook.Sheets['Scopes']){
           var sData = XLSX.utils.sheet_to_json(workbook.Sheets['Scopes']);
           sData.forEach(row => {
-            if (!row['SCOPE'] && !row['Scope Description']) return;
-            var payload = {
-              scope_title: row['SCOPE'] || '',
-              scope_desc: row['Scope Description'] || '',
-              wiki_title: row['Wiki / Path'] || '',
-              wiki_desc: row['Wiki Description'] || ''
-            };
-            if (row['ID (Do Not Modify)']) payload.id = row['ID (Do Not Modify)'];
-            sUpserts.push(payload);
+            sUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, scope_title: row['SCOPE'], scope_desc: row['Scope Description'], wiki_title: row['Wiki / Path'], wiki_desc: row['Wiki Description'] });
           });
-          if(sUpserts.length > 0) {
-            const { error } = await supabase.from('scopes').upsert(sUpserts);
-            if (error) throw error;
-          }
+          if(sUpserts.length > 0) await supabase.from('scopes').upsert(sUpserts);
         }
 
-        // LIMPIEZA DE ESCALATION PATHS
         if (workbook.Sheets['Escalation Path']){
           var eData = XLSX.utils.sheet_to_json(workbook.Sheets['Escalation Path']);
           eData.forEach(row => {
-            if (!row['Description'] && !row['Escalation Team']) return;
-            var payload = {
-              description: row['Description'] || '',
-              team: row['Escalation Team'] || '',
-              path: row['Escalation Path'] || '',
-              macro: row['Macro to be Used'] || ''
-            };
-            if (row['ID (Do Not Modify)']) payload.id = row['ID (Do Not Modify)'];
-            eUpserts.push(payload);
+            eUpserts.push({ id: row['ID (Do Not Modify)'] || undefined, description: row['Description'], team: row['Escalation Team'], path: row['Escalation Path'], macro: row['Macro to be Used'] });
           });
-          if(eUpserts.length > 0) {
-            const { error } = await supabase.from('escalations').upsert(eUpserts);
-            if (error) throw error;
-          }
+          if(eUpserts.length > 0) await supabase.from('escalations').upsert(eUpserts);
         }
         
         document.getElementById('importBtn').innerText = "Import Data (Cloud Sync)";
-        alert('¡Toda tu data se ha importado a Supabase exitosamente!');
-        
-        // Refrescar vistas desde la base de datos
-        loadAllDataFromDB();
-        
+        alert('Data Imported directly to Supabase Successfully!');
       } catch (err) {
         document.getElementById('importBtn').innerText = "Import Data (Cloud Sync)";
-        alert('Error importando data a Supabase: ' + err.message);
+        alert('Error importing data. Make sure it is the correct exported file.');
         console.error(err);
       }
       document.getElementById('importFile').value = '';
@@ -1035,12 +906,27 @@
     reader.readAsArrayBuffer(file);
   });
 
-  // --- Combined Search ---
-  searchInput.addEventListener('input', function() {
-    renderTickets();
-    renderScopes();
-    renderEscalations();
-  });
+  // --- Search ---
+  var searchInput = document.getElementById('searchInput');
+  function runSearch(){
+    var q = searchInput.value.toLowerCase();
+    var tCards = document.querySelectorAll('#ticketGrid .ticket-card');
+    tCards.forEach(function(card){
+      var t = state.tickets.find(x => x.id === card.getAttribute('data-id'));
+      if(t && ((t.ticketNumber||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))) card.style.display = 'block'; else card.style.display = 'none';
+    });
+    var sRows = document.querySelectorAll('#scopeTableBody tr[data-id]');
+    sRows.forEach(function(row){
+      var s = state.scopes.find(x => x.id === row.getAttribute('data-id'));
+      if(s && ((s.scopeTitle||'').toLowerCase().includes(q) || (s.scopeDesc||'').toLowerCase().includes(q) || (s.wikiTitle||'').toLowerCase().includes(q))) row.style.display = 'table-row'; else row.style.display = 'none';
+    });
+    var eRows = document.querySelectorAll('#escTableBody tr[data-id]');
+    eRows.forEach(function(row){
+      var e = state.escalations.find(x => x.id === row.getAttribute('data-id'));
+      if(e && ((e.description||'').toLowerCase().includes(q) || (e.team||'').toLowerCase().includes(q))) row.style.display = 'table-row'; else row.style.display = 'none';
+    });
+  }
+  searchInput.addEventListener('input', runSearch);
 
   // Close modals on background click
   document.querySelectorAll('.modal-overlay').forEach(function(overlay){
