@@ -26,11 +26,11 @@
     --card-bg-hover: rgba(255,255,255,0.08);
     --card-border: rgba(255,255,255,0.12);
     
-    --danger: #F22F46; 
-    --ok: #14B053; 
-    --onhold: #0263E0; 
-    --closed: #8E44AD; 
-    --kicked: #8C9EA6; 
+    --danger: #F22F46; /* Pending: Rojo */
+    --ok: #14B053; /* Solved: Verde */
+    --onhold: #0263E0; /* On-Hold: Azul */
+    --closed: #8E44AD; /* Closed: Morado */
+    --kicked: #8C9EA6; /* Kicked: Gris */
     
     --radius: 8px; 
   }
@@ -105,18 +105,34 @@
   
   /* BIBLE SEARCH SPECIFIC */
   .bible-search-box { border-color: var(--ok); background: rgba(20,176,83,0.05); }
-  .bible-search-btn { background: var(--ok); }
-  .bible-search-btn:hover { background: #119445; transform:scale(1.06); }
+  .bible-search-btn { background: var(--ok); border-radius: 999px; padding: 0 15px; width: auto; font-size: 13px; font-weight: 600; }
+  .bible-search-btn:hover { background: #119445; transform:scale(1.03); }
 
   .global-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
   .user-info-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; font-size: 12.5px; color: var(--text-dim); }
   .drive-dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); display:inline-block; flex-shrink:0;}
   .drive-dot.connected{background:var(--ok); box-shadow:0 0 6px var(--ok);}
 
-  /* ---------- Sections ---------- */
-  section.block{margin-top:44px;}
-  .block-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px;}
-  .block-head h2{font-size:20px; margin:0; display:flex; align-items:center; gap:10px;}
+  /* ---------- NEW ACCORDION SECTIONS UI ---------- */
+  section.block{margin-top:24px;}
+  
+  .section-header {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
+    padding: 18px 24px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.2s, border-color 0.2s; user-select: none;
+  }
+  .section-header:hover { background: var(--card-bg-hover); border-color: var(--twilio-red); }
+  .section-header h2 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 12px; }
+  
+  .chevron { transition: transform 0.3s ease; color: var(--text-dim); }
+  .chevron.open { transform: rotate(180deg); color: var(--twilio-red); }
+
+  .collapsible-body { display: none; padding-top: 20px; }
+  .collapsible-body.open { display: block; animation: slideDown 0.3s ease-out; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .action-bar { display: flex; justify-content: flex-end; margin-bottom: 16px; width: 100%; }
+
   .tag-pill{
     font-size:11px; text-transform:uppercase; letter-spacing:1px; background:rgba(242,47,70,0.15);
     color:var(--twilio-red); border:1px solid rgba(242,47,70,0.3); padding:4px 10px; border-radius:999px; font-weight:700;
@@ -169,7 +185,6 @@
   .ticket-card.selected .select-dot{background:var(--twilio-red); border-color:var(--twilio-red);}
   .ticket-num{font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:#fff; margin-right:6px;}
 
-  /* Colors correctly matched as requested */
   .status-badge{ display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; padding:3px 8px; border-radius:999px; margin-left:4px; vertical-align:middle; }
   .status-on-hold{background:rgba(2, 99, 224, 0.18); color:var(--onhold);} 
   .status-pending{background:rgba(242, 47, 70, 0.18); color:var(--danger);} 
@@ -212,7 +227,6 @@
   .field textarea{min-height:70px;}
   .field input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1); cursor:pointer;}
   
-  /* Modal Toggle Colors Update */
   .status-toggle{display:flex; gap:6px; flex-wrap:wrap;}
   .status-option{ flex:1; min-width:80px; text-align:center; padding:10px 4px; border-radius:6px; border:1px solid var(--card-border); cursor:pointer; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim); }
   
@@ -272,12 +286,12 @@
       </div>
     </div>
     
-    <!-- BIBLE SEARCH -->
+    <!-- FEDERATED BIBLE SEARCH -->
     <div class="search-wrap">
       <div class="search-box bible-search-box">
         <input type="text" id="bibleSearchInput" placeholder="BIBLE SEARCH: Buscar en URLs externas...">
         <button class="search-btn bible-search-btn" id="bibleSearchBtn" title="Search External Web">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M11 8v6M8 11h6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+          Federated Search
         </button>
       </div>
     </div>
@@ -296,78 +310,94 @@
     </div>
   </header>
 
-  <!-- ================= CASE REFERENCE WORKFLOWS ================= -->
+  <!-- ================= CASE REFERENCE WORKFLOWS (ACCORDION) ================= -->
   <section class="block">
-    <div class="block-head">
+    <div class="section-header" onclick="toggleSection('ticketsSection')">
       <h2>Case Reference Workflows <span class="tag-pill">Tickets (<span id="countTickets">0</span>)</span></h2>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="openAddTicketBtn">+ Añadir Ticket</button>
-        <button class="btn btn-danger" id="removeTicketBtn" disabled>Eliminar</button>
+      <svg class="chevron" id="chevron-ticketsSection" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+    <div class="collapsible-body" id="ticketsSection">
+      
+      <div class="action-bar">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="openAddTicketBtn">+ Añadir Ticket</button>
+          <button class="btn btn-danger" id="removeTicketBtn" disabled>Eliminar Ticket</button>
+        </div>
       </div>
-    </div>
 
-    <!-- PANEL DE FILTROS AVANZADOS -->
-    <div class="advanced-filters">
-      <span class="filter-label">Filtros:</span>
-      <select id="ticketStatusFilter" class="filter-select">
-        <option value="ALL">Status: Todos</option>
-        <option value="ON-HOLD">On-Hold</option>
-        <option value="PENDING">Pending</option>
-        <option value="SOLVED">Solved</option>
-        <option value="CLOSED">Closed</option>
-        <option value="KICKED">Kicked</option>
-      </select>
-      <select id="ticketDateFilter" class="filter-select">
-        <option value="ALL">Fecha: Todo el tiempo</option>
-        <option value="7">Últimos 7 días</option>
-        <option value="30">Últimos 30 días</option>
-      </select>
-      <select id="ticketSortFilter" class="filter-select">
-        <option value="DESC">Orden: Más Recientes Primero</option>
-        <option value="ASC">Orden: Más Antiguos Primero</option>
-      </select>
-    </div>
+      <!-- PANEL DE FILTROS AVANZADOS -->
+      <div class="advanced-filters">
+        <span class="filter-label">Filtros:</span>
+        <select id="ticketStatusFilter" class="filter-select">
+          <option value="ALL">Status: Todos</option>
+          <option value="ON-HOLD">On-Hold</option>
+          <option value="PENDING">Pending</option>
+          <option value="SOLVED">Solved</option>
+          <option value="CLOSED">Closed</option>
+          <option value="KICKED">Kicked</option>
+        </select>
+        <select id="ticketDateFilter" class="filter-select">
+          <option value="ALL">Fecha: Todo el tiempo</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
+        <select id="ticketSortFilter" class="filter-select">
+          <option value="DESC">Orden: Más Recientes Primero</option>
+          <option value="ASC">Orden: Más Antiguos Primero</option>
+        </select>
+      </div>
 
-    <div class="ticket-grid" id="ticketGrid"></div>
+      <div class="ticket-grid" id="ticketGrid"></div>
+    </div>
   </section>
 
-  <!-- ================= MESSAGING SUPPORT SCOPE ================= -->
+  <!-- ================= MESSAGING SUPPORT SCOPE (ACCORDION) ================= -->
   <section class="block">
-    <div class="block-head">
+    <div class="section-header" onclick="toggleSection('scopesSection')">
       <h2>Messaging Support Scope <span class="tag-pill">Scopes (<span id="countScopes">0</span>)</span></h2>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="openAddScopeBtn">+ Añadir</button>
-        <button class="btn btn-secondary" id="editScopeBtn" disabled>Editar</button>
-        <button class="btn btn-danger" id="removeScopeBtn" disabled>Eliminar</button>
-      </div>
+      <svg class="chevron" id="chevron-scopesSection" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </div>
-    <div class="table-wrap">
-      <table class="esc-table">
-        <thead>
-          <tr><th>Scope</th><th>Descripción del Scope</th><th>Wiki / Path</th><th>Descripción del Wiki</th></tr>
-        </thead>
-        <tbody id="scopeTableBody"></tbody>
-      </table>
+    <div class="collapsible-body" id="scopesSection">
+      <div class="action-bar">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="openAddScopeBtn">+ Añadir Scope</button>
+          <button class="btn btn-secondary" id="editScopeBtn" disabled>Editar</button>
+          <button class="btn btn-danger" id="removeScopeBtn" disabled>Eliminar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="esc-table">
+          <thead>
+            <tr><th>Scope</th><th>Descripción del Scope</th><th>Wiki / Path</th><th>Descripción del Wiki</th></tr>
+          </thead>
+          <tbody id="scopeTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
-  <!-- ================= ESCALATION PATH ================= -->
+  <!-- ================= ESCALATION PATH (ACCORDION) ================= -->
   <section class="block">
-    <div class="block-head">
+    <div class="section-header" onclick="toggleSection('escalationsSection')">
       <h2>Escalation Path <span class="tag-pill">Routing (<span id="countEscalations">0</span>)</span></h2>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="openAddEscBtn">+ Añadir</button>
-        <button class="btn btn-secondary" id="editEscBtn" disabled>Editar</button>
-        <button class="btn btn-danger" id="removeEscBtn" disabled>Eliminar</button>
-      </div>
+      <svg class="chevron" id="chevron-escalationsSection" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </div>
-    <div class="table-wrap">
-      <table class="esc-table">
-        <thead>
-          <tr><th>Description</th><th>Escalation Team</th><th>Escalation Path</th><th>Macro to be Used</th></tr>
-        </thead>
-        <tbody id="escTableBody"></tbody>
-      </table>
+    <div class="collapsible-body" id="escalationsSection">
+      <div class="action-bar">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="openAddEscBtn">+ Añadir Path</button>
+          <button class="btn btn-secondary" id="editEscBtn" disabled>Editar</button>
+          <button class="btn btn-danger" id="removeEscBtn" disabled>Eliminar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="esc-table">
+          <thead>
+            <tr><th>Description</th><th>Escalation Team</th><th>Escalation Path</th><th>Macro to be Used</th></tr>
+          </thead>
+          <tbody id="escTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -589,7 +619,22 @@
   }
 
   // ==========================================
-  // AUTENTICACIÓN Y SESIÓN
+  // TOGGLE ACCORDIONS (NOVEDAD)
+  // ==========================================
+  window.toggleSection = function(id) {
+    var body = document.getElementById(id);
+    var chevron = document.getElementById('chevron-' + id);
+    if (body.classList.contains('open')) {
+      body.classList.remove('open');
+      chevron.classList.remove('open');
+    } else {
+      body.classList.add('open');
+      chevron.classList.add('open');
+    }
+  };
+
+  // ==========================================
+  // AUTENTICACIÓN
   // ==========================================
   async function checkSession() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -615,10 +660,8 @@
     const errEl = document.getElementById('loginError');
     errEl.style.display = 'none';
     document.getElementById('loginBtn').innerText = "Verificando...";
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     document.getElementById('loginBtn').innerText = "Entrar a la Plataforma";
-    
     if (error) { errEl.innerText = "Error: " + error.message; errEl.style.display = 'block'; } 
     else { handleSession(data.session); }
   });
@@ -638,12 +681,10 @@
   async function fetchTickets() {
     const { data, error } = await supabase.from('tickets').select('*');
     if (error) return;
-    
     state.tickets = data.map(t => ({
       id: t.id, ticketNumber: t.ticket_number, description: t.description, actions: t.actions, 
       resolution: t.resolution, status: t.status, createdAt: t.created_at, updatedAt: t.updated_at, statusUpdatedAt: t.status_updated_at
     }));
-    
     var now = Date.now(), tenDaysMs = 10 * 24 * 60 * 60 * 1000, needsUpdate = false;
     for (let t of state.tickets) {
       if (t.status === 'SOLVED' && t.statusUpdatedAt && (now - t.statusUpdatedAt) >= tenDaysMs) {
@@ -765,8 +806,10 @@
     var payload = { ticket_number: num, description: desc, actions: document.getElementById('atActions').value.trim(), resolution: document.getElementById('atResolution').value.trim(), status: getStatusToggle(document.getElementById('atStatusToggle')), created_at: enteredAt, updated_at: now, status_updated_at: now };
     
     document.getElementById('saveTicketBtn').innerText = "Guardando...";
-    await supabase.from('tickets').insert([payload]);
+    const { error } = await supabase.from('tickets').insert([payload]);
     document.getElementById('saveTicketBtn').innerText = "Guardar en Base de Datos";
+    
+    if(error) { alert("Error saving: " + error.message); return; }
     addTicketModal.classList.remove('show');
   });
 
@@ -930,7 +973,7 @@
   });
 
   // ==========================================
-  // BIBLE SEARCH / WEB SCRAPING ENGINE
+  // BIBLE SEARCH (FEDERATED DEEP SEARCH)
   // ==========================================
   function renderBibleUrlsUI() {
     var tbody = document.getElementById('bibleUrlsTableBody');
@@ -956,9 +999,11 @@
     if(!url) { alert("Debes colocar una URL válida"); return; }
     
     document.getElementById('addBibleUrlBtn').innerText = "Guardando...";
-    await supabase.from('bible_urls').insert([{ url: url, description: desc, created_at: Date.now() }]);
+    const { error } = await supabase.from('bible_urls').insert([{ url: url, description: desc, created_at: Date.now() }]);
     document.getElementById('addBibleUrlBtn').innerText = "+ Añadir a la Base de Datos";
-    document.getElementById('newBibleUrl').value = ''; document.getElementById('newBibleDesc').value = '';
+    
+    if (error) { alert("Error al guardar la URL en la nube: " + error.message); } 
+    else { document.getElementById('newBibleUrl').value = ''; document.getElementById('newBibleDesc').value = ''; }
   });
 
   window.deleteBibleUrl = async function(id) {
@@ -966,76 +1011,33 @@
     await supabase.from('bible_urls').delete().eq('id', id);
   };
 
-  // Motor de Scraping Interno (Fetch HTML + Parse)
-  document.getElementById('bibleSearchBtn').addEventListener('click', async function() {
+  // FEDERATED SEARCH TRIGGER (BÚSQUEDA PROFUNDA GOOGLE DORK)
+  document.getElementById('bibleSearchBtn').addEventListener('click', function() {
     var query = document.getElementById('bibleSearchInput').value.trim();
     if(!query) return;
     if(!state.bibleUrls || state.bibleUrls.length === 0) {
-      alert("Debes añadir al menos una URL pública en 'Gestionar BIBLE URLs' primero.");
+      alert("Debes añadir al menos una URL en 'Gestionar BIBLE URLs' primero.");
       return;
     }
 
-    currentBibleQuery = query;
-    var resultsBox = document.getElementById('bibleSearchResultsBox');
-    resultsBox.innerHTML = `<p style="color:var(--ok)">Rastreando la web para <b>"${escapeHtml(query)}"</b>...</p>`;
-    document.getElementById('bibleResultsModal').classList.add('show');
-
-    let foundSomething = false;
-    let finalHtml = '';
-
-    for (let bUrl of state.bibleUrls) {
-      try {
-        // Usamos un proxy CORS gratuito para extraer el HTML de la web externa
-        let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(bUrl.url)}`);
-        if(!res.ok) continue;
-        let data = await res.json();
-        
-        // Parsear HTML a texto plano
-        let doc = new DOMParser().parseFromString(data.contents, 'text/html');
-        let pureText = doc.body.textContent || "";
-        
-        // Buscar Coincidencias con Regex (ignorando mayúsculas)
-        let regex = new RegExp(`(.{0,80})(${query})(.{0,80})`, 'gi');
-        let matches = [...pureText.matchAll(regex)];
-        
-        if (matches.length > 0) {
-          foundSomething = true;
-          finalHtml += `<div class="bible-snippet"><span class="bible-url-header">Encontrado en: <a href="${bUrl.url}" target="_blank" style="color:var(--cisco-blue)">${bUrl.description || bUrl.url}</a></span><ul>`;
-          // Mostrar solo los primeros 3 snippets para no saturar
-          matches.slice(0, 3).forEach(m => {
-            let pre = m[1].replace(/\n/g, ' ').trim();
-            let matchText = m[2];
-            let post = m[3].replace(/\n/g, ' ').trim();
-            finalHtml += `<li>...${escapeHtml(pre)} <b>${escapeHtml(matchText)}</b> ${escapeHtml(post)}...</li>`;
-          });
-          finalHtml += `</ul></div>`;
-        }
-      } catch(e) {
-        console.error("No se pudo scrapear: ", bUrl.url);
-      }
-    }
-
-    if (!foundSomething) {
-      finalHtml = `<p style="color:var(--danger)">No se encontraron resultados exactos en el contenido frontal de las URLs proporcionadas.</p>
-                   <p style="font-size:12px; color:var(--text-dim)">Recuerda: El rastreo interno solo lee la página exacta que pusiste, no sus sub-enlaces. Si quieres buscar en todo el sitio web, usa el botón de "Búsqueda Profunda".</p>`;
-    }
-    resultsBox.innerHTML = finalHtml;
-  });
-
-  // Búsqueda Profunda (Google Dorking)
-  document.getElementById('deepSearchBtn').addEventListener('click', function(){
-    if(!currentBibleQuery || state.bibleUrls.length === 0) return;
-    // Construimos un query avanzado de Google (ej: query (site:twilio.com OR site:wiki.com))
     let sites = state.bibleUrls.map(u => {
-      try { return 'site:' + new URL(u.url).hostname; } catch(e) { return 'site:' + u.url; }
+      try { 
+        let domain = new URL(u.url).hostname;
+        let path = new URL(u.url).pathname;
+        if(path.length > 1) return `site:${domain}${path}`;
+        return `site:${domain}`; 
+      } catch(e) { return `site:${u.url}`; }
     });
-    let uniqueSites = [...new Set(sites)]; // Eliminar dominios duplicados
-    let googleQuery = `${currentBibleQuery} (${uniqueSites.join(' OR ')})`;
+    
+    let uniqueSites = [...new Set(sites)];
+    let googleQuery = `"${query}" (${uniqueSites.join(' OR ')})`;
     window.open('https://www.google.com/search?q=' + encodeURIComponent(googleQuery), '_blank');
+    document.getElementById('bibleSearchInput').value = '';
   });
 
-  document.getElementById('closeBibleResultsBtn').addEventListener('click', function(){ document.getElementById('bibleResultsModal').classList.remove('show'); });
-
+  document.getElementById('bibleSearchInput').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') { document.getElementById('bibleSearchBtn').click(); }
+  });
 
   // ==========================================
   // EXPORT / IMPORT (EXCEL + JSON DUAL SYSTEM)
